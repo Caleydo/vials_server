@@ -21,6 +21,7 @@ api = Api(app)
 cors = CORS(app)
 
 parser = api.parser()
+parser.add_argument('chromID', type=str, help='chromosome ID')
 parser.add_argument('pos', type=int, help='gene position')
 parser.add_argument('baseWidth', type=float, help='number of bases')
 ns = api.namespace('bam', description='BAM operations')
@@ -28,21 +29,19 @@ ns = api.namespace('bam', description='BAM operations')
 @ns.route("/pileup")
 class BAMInfo(Resource):
     def get(self):
+        chromID = '1'
         pos=0
         base_width = 128
-        chrm = 'chr17'
 
         args = parser.parse_args()
+        chromID = args['chromID'] or chromID
         pos = args['pos'] or pos
         base_width = args['baseWidth'] or base_width
         print args
         positions =[]
         samfile = pysam.Samfile( bamFileLocation, "rb")
 
-        tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-            mRNAs, strand, chrom = parse_gene(os.path.dirname(gffFileLocation))
-
-        for pileupcolumn in samfile.pileup(chrm, pos, pos+base_width-1):
+        for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width-1):
             seqs =[]
             for pileupread in pileupcolumn.pileups:
                 seqs.append({'name':pileupread.alignment.qname,'val':pileupread.alignment.seq[pileupread.qpos]})
@@ -76,9 +75,10 @@ class BAMGenesInfo(Resource):
 
         def gene_to_dict(gene, filename):
             tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-               mRNAs, strand, chrom = parse_gene.parseGene(filename, gene)
+               mRNAs, strand, chromID = parse_gene.parseGene(filename, gene)
             return {'tx_start': tx_start, 'tx_end': tx_end,
-                    'exon_starts': exon_starts, 'exon_ends': exon_ends}
+                    'exon_starts': exon_starts, 'exon_ends': exon_ends,
+                    'chromID': chromID}
 
         return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
 
