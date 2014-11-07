@@ -42,8 +42,14 @@ class BAMInfo(Resource):
         positions =[]
         samfile = pysam.Samfile( bamFileLocation, "rb")
         subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
-        wiggle, _ = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
+        wiggle, jxns = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
         wiggle = wiggle.tolist()
+
+        jxn_ranges = []
+        for jxn_range_str, jxn_count in jxns.iteritems():
+            jxn_range = map(int, jxn_range_str.split(':'))
+            jxn_ranges.append((jxn_range, jxn_count))
+        print jxn_ranges
 
         for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width):
             seqs =[]
@@ -53,7 +59,7 @@ class BAMInfo(Resource):
                 positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
 
         samfile.close()
-        return positions
+        return [positions, jxn_ranges]
 
     # def post(self):
     #     api.abort(403)
