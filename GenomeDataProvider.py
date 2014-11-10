@@ -11,10 +11,11 @@ from misopy import index_gff, parse_gene
 from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
 import os
 import shelve
+import json
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-bamFileLocation = config['SERVER']['bamFile']
+bamFiles = json.loads(config['SERVER']['bamFiles'])
 gffFileLocation = config['SERVER']['gffFile']
 
 app = Flask(__name__)
@@ -39,27 +40,32 @@ class BAMInfo(Resource):
         pos = args['pos'] or pos
         base_width = args['baseWidth'] or base_width
         print args
-        positions =[]
-        samfile = pysam.Samfile( bamFileLocation, "rb")
-        subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
-        wiggle, jxns = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
-        wiggle = wiggle.tolist()
 
-        jxn_ranges = []
-        for jxn_range_str, jxn_count in jxns.iteritems():
-            jxn_range = map(int, jxn_range_str.split(':'))
-            jxn_ranges.append((jxn_range, jxn_count))
-        print jxn_ranges
+        positions, jxns = [], []
+        for bamFile in bamFiles:
+            sample_positions, sample_jxns = [], []
+            samfile = pysam.Samfile( bamFile, "rb")
+            subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
+            wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
+            wiggle = wiggle.tolist()
 
-        for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width):
-            seqs =[]
-            for pileupread in pileupcolumn.pileups:
-                seqs.append({'name':pileupread.alignment.qname,'val':pileupread.alignment.seq[pileupread.qpos]})
-            if ((pileupcolumn.pos>=pos) & (pileupcolumn.pos-base_width<pos)):
-                positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
+            sample_jxns = []
+            for jxn_range_str, jxn_count in jxn_reads.iteritems():
+                jxn_range = map(int, jxn_range_str.split(':'))
+                sample_jxns.append((jxn_range, jxn_count))
 
-        samfile.close()
-        return [positions, jxn_ranges]
+            for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width):
+                seqs =[]
+                for pileupread in pileupcolumn.pileups:
+                    seqs.append({'name':pileupread.alignment.qname,'val':pileupread.alignment.seq[pileupread.qpos]})
+                if ((pileupcolumn.pos>=pos) & (pileupcolumn.pos-base_width<pos)):
+                    sample_positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
+
+            samfile.close()
+            positions.append(sample_positions)
+            jxns.append(sample_jxns)
+
+        return {'samples': bamFiles, 'positions': positions, 'jxns': jxns}
 
     # def post(self):
     #     api.abort(403)
@@ -86,10 +92,12 @@ class BAMWiggle(Resource):
 @ns.route("/header")
 class BAMHeaderInfo(Resource):
     def get(self):
-        samfile = pysam.Samfile( bamFileLocation, "rb" )
-        h = samfile.header
-        samfile.close()
-        return h
+        headers = {}
+        for bamFile in bamFiles:
+            samfile = pysam.Samfile( bamFile, "rb" )
+            headers[bamFile] = samfile.header
+            samfile.close()
+        return headers
 
     # def post(self):
     #     api.abort(403)
@@ -116,4 +124,5 @@ class BAMGenesInfo(Resource):
         return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
 
 if __name__ == '__main__':
+    app.debug = True
     app.run()
