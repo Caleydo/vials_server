@@ -15,8 +15,11 @@ import json
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-bamFiles = json.loads(config['SERVER']['bamFiles'])
-gffFileLocation = config['SERVER']['gffFile']
+samples = json.loads(config['SERVER']['samples'])
+bam_dir = config['SERVER']['bam_dir']
+sample_files = {s: os.path.join(bam_dir, s + ".sorted.bam") for s in samples}
+miso_dir = config['SERVER']['miso_dir']
+gff_file = config['SERVER']['gff_file']
 
 app = Flask(__name__)
 api = Api(app)
@@ -41,10 +44,11 @@ class BAMInfo(Resource):
         base_width = args['baseWidth'] or base_width
         print args
 
-        positions, jxns = [], []
-        for bamFile in bamFiles:
-            sample_positions, sample_jxns = [], []
-            samfile = pysam.Samfile( bamFile, "rb")
+        sample_data = {}
+        for sample, bam_file in sample_files.iteritems():
+            sample_positions = []
+            samfile = pysam.Samfile(bam_file, "rb")
+            print samples
             subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
             wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
             wiggle = wiggle.tolist()
@@ -62,40 +66,20 @@ class BAMInfo(Resource):
                     sample_positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
 
             samfile.close()
-            positions.append(sample_positions)
-            jxns.append(sample_jxns)
+            sample_data[sample] = {'positions': sample_positions, 'jxns': sample_jxns}
 
-        return {'samples': bamFiles, 'positions': positions, 'jxns': jxns}
+        return sample_data
 
     # def post(self):
     #     api.abort(403)
-
-@ns.route("/wiggle")
-class BAMWiggle(Resource):
-    def get(self):
-        chromID = '1'
-        pos=0
-        base_width = 128
-
-        args = parser.parse_args()
-        chromID = args['chromID'] or chromID
-        pos = args['pos'] or pos
-        base_width = args['baseWidth'] or base_width
-
-        samfile = pysam.Samfile(bamFileLocation, 'rb')
-        subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
-        print subset_reads
-        wiggle, _ = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
-
-        return zip([pos + idx for idx in range(len(wiggle))], wiggle.tolist())
 
 @ns.route("/header")
 class BAMHeaderInfo(Resource):
     def get(self):
         headers = {}
-        for bamFile in bamFiles:
-            samfile = pysam.Samfile( bamFile, "rb" )
-            headers[bamFile] = samfile.header
+        for bam_file in sample_files.values():
+            samfile = pysam.Samfile(bam_file, "rb")
+            headers[bam_file] = samfile.header
             samfile.close()
         return headers
 
@@ -105,9 +89,8 @@ class BAMHeaderInfo(Resource):
 @ns.route("/genes")
 class BAMGenesInfo(Resource):
     def get(self):
-        pickle_dir = os.path.dirname(gffFileLocation)
-        genes_filename = os.path.join(pickle_dir,
-                              "genes_to_filenames.shelve")
+        pickle_dir = os.path.dirname(gff_file)
+        genes_filename = os.path.join(pickle_dir, "genes_to_filenames.shelve")
         
         genes = dict(shelve.open(genes_filename))
 
@@ -118,11 +101,20 @@ class BAMGenesInfo(Resource):
             exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
             mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
 
+            psis = {}
+            for sample in samples:
+                sample_psis = []
+                for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
+                    if not line.startswith("#") and not line.startswith("sampled"):
+                        psi, logodds = line.strip().split("\t")
+                        sample_psis.append(float(psi.split(",")[0]))
+                psis[sample] = float(sum(sample_psis))/len(sample_psis)
+
             return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
-                    'exons': exons, 'mRNAs': mRNAs, 'strand': strand}
+                    'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
 
         return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
 
 if __name__ == '__main__':
-    app.debug = True
+    # app.debug1 = True
     app.run()
