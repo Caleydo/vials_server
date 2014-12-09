@@ -56,7 +56,8 @@ class BAMInfo(Resource):
             sample_jxns = []
             for jxn_range_str, jxn_count in jxn_reads.iteritems():
                 jxn_range = map(int, jxn_range_str.split(':'))
-                sample_jxns.append((jxn_range, jxn_count))
+                if jxn_range[0] >= pos and jxn_range[1] <= pos+base_width:
+                    sample_jxns.append((jxn_range, jxn_count))
 
             for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width):
                 seqs =[]
@@ -108,7 +109,8 @@ class BAMGenesInfo(Resource):
                     if not line.startswith("#") and not line.startswith("sampled"):
                         psi, logodds = line.strip().split("\t")
                         sample_psis.append(float(psi.split(",")[0]))
-                psis[sample] = float(sum(sample_psis))/len(sample_psis)
+                psi_avg = float(sum(sample_psis))/len(sample_psis)
+                psis[sample] = [psi_avg, 1-psi_avg]
 
             return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
                     'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
