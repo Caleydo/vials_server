@@ -4,8 +4,9 @@ from flask.ext.cors import CORS
 __author__ = 'Hendrik Strobelt'
 
 import pysam
-from flask import Flask, request
-from flask.ext.restplus import Api, Resource
+from flask.ext.restplus import Resource
+from caleydo.apiutil import createAPI
+
 import configparser
 from misopy import index_gff, parse_gene
 from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
@@ -14,24 +15,28 @@ import shelve
 import json
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+
+dn = os.path.dirname(os.path.realpath(__file__))
+
+config.read(dn + '/config.ini')
 samples = json.loads(config['SERVER']['samples'])
 bam_dir = config['SERVER']['bam_dir']
 sample_files = {s: os.path.join(bam_dir, s + ".sorted.bam") for s in samples}
 miso_dir = config['SERVER']['miso_dir']
 gff_file = config['SERVER']['gff_file']
 
-app = Flask(__name__)
-api = Api(app)
+
+#create the api application
+app, api = createAPI(__name__, version='1.0', title='Caleydo Web BAM API', description='BAM operations')
+
 cors = CORS(app)
 
 parser = api.parser()
 parser.add_argument('chromID', type=str, help='chromosome ID')
 parser.add_argument('pos', type=int, help='gene position')
 parser.add_argument('baseWidth', type=float, help='number of bases')
-ns = api.namespace('bam', description='BAM operations')
 
-@ns.route("/pileup")
+@api.route("/pileup")
 class BAMInfo(Resource):
     def get(self):
         chromID = '1'
@@ -74,7 +79,7 @@ class BAMInfo(Resource):
     # def post(self):
     #     api.abort(403)
 
-@ns.route("/header")
+@api.route("/header")
 class BAMHeaderInfo(Resource):
     def get(self):
         headers = {}
@@ -87,12 +92,12 @@ class BAMHeaderInfo(Resource):
     # def post(self):
     #     api.abort(403)
 
-@ns.route("/genes")
+@api.route("/genes")
 class BAMGenesInfo(Resource):
     def get(self):
         pickle_dir = os.path.dirname(gff_file)
         genes_filename = os.path.join(pickle_dir, "genes_to_filenames.shelve")
-        
+
         genes = dict(shelve.open(genes_filename))
 
         def gene_to_dict(gene, filename):
@@ -120,3 +125,6 @@ class BAMGenesInfo(Resource):
 if __name__ == '__main__':
     # app.debug1 = True
     app.run()
+
+def create():
+  return app	

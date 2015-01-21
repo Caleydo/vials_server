@@ -1,0 +1,21 @@
+{
+  "name" : "genomebrowser-server",
+  "version": "0.0.1",
+  "caleydo" : {
+    "python-server-plugins": [
+      {
+        "type": "namespace",
+        "id": "genomebrowser-server",
+        "namespace": "/api/genomebrowser",
+        "folder" : "genomebrowser-server",
+        "module": "genomebrowser-server/GenomeDataProvider"
+      }
+    ],
+    "python-pip": {
+      "Flask-Cors" : "1.9.0",
+      "pysam": "0.8.0",
+      "configparser" : "3.3.0r2-r0-20150113",
+      "misopy": "0.5.2"
+    }
+  }
+}
