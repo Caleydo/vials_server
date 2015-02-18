@@ -11,7 +11,7 @@ import configparser
 from misopy import index_gff, parse_gene
 from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
 import os
-import shelve
+# import shelve
 import json
 
 config = configparser.ConfigParser()
@@ -26,7 +26,7 @@ miso_dir = config['SERVER']['miso_dir']
 gff_file = config['SERVER']['gff_file']
 
 
-#create the api application
+# create the api application
 app, api = createAPI(__name__, version='1.0', title='Caleydo Web BAM API', description='BAM operations')
 
 cors = CORS(app)
@@ -39,8 +39,8 @@ parser.add_argument('baseWidth', type=float, help='number of bases')
 @api.route("/pileup")
 class BAMInfo(Resource):
     def get(self):
-        chromID = '1'
-        pos=0
+        chromID = 'chr17'
+        pos=1
         base_width = 128
 
         args = parser.parse_args()
@@ -66,13 +66,14 @@ class BAMInfo(Resource):
 
             for pileupcolumn in samfile.pileup(chromID, pos, pos+base_width):
                 seqs =[]
-                for pileupread in pileupcolumn.pileups:
-                    seqs.append({'name':pileupread.alignment.qname,'val':pileupread.alignment.seq[pileupread.qpos]})
+                # for pileupread in pileupcolumn.pileups:
+                #     seqs.append({'name':pileupread.alignment.qname,'val':pileupread.alignment.seq[pileupread.qpos]})
                 if ((pileupcolumn.pos>=pos) & (pileupcolumn.pos-base_width<pos)):
                     sample_positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
 
             samfile.close()
-            sample_data[sample] = {'positions': sample_positions, 'jxns': sample_jxns}
+            sample_data[sample] = {'data_values': sample_positions.__len__(), 'positions': sample_positions,
+                                   'jxns': sample_jxns}
 
         return sample_data
 
@@ -96,9 +97,11 @@ class BAMHeaderInfo(Resource):
 class BAMGenesInfo(Resource):
     def get(self):
         pickle_dir = os.path.dirname(gff_file)
-        genes_filename = os.path.join(pickle_dir, "genes_to_filenames.shelve")
+        genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
 
-        genes = dict(shelve.open(genes_filename))
+        genes = {}
+        with open(genes_filename) as jsonF:
+            genes = json.load(jsonF)
 
         def gene_to_dict(gene, filename):
             tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
