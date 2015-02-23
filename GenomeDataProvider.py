@@ -8,6 +8,7 @@ from flask.ext.restplus import Resource
 from caleydo.apiutil import createAPI
 
 import configparser
+from intervaltree import IntervalTree
 from misopy import index_gff, parse_gene
 from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
 import os
@@ -24,6 +25,8 @@ bam_dir = config['SERVER']['bam_dir']
 sample_files = {s: os.path.join(bam_dir, s + ".sorted.bam") for s in samples}
 miso_dir = config['SERVER']['miso_dir']
 gff_file = config['SERVER']['gff_file']
+pickle_dir = os.path.join(os.path.dirname(gff_file), "indexed_gff")
+genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
 
 
 # create the api application
@@ -32,30 +35,67 @@ app, api = createAPI(__name__, version='1.0', title='Caleydo Web BAM API', descr
 cors = CORS(app)
 
 parser = api.parser()
-parser.add_argument('chromID', type=str, help='chromosome ID')
+# parser.add_argument('chromID', type=str, help='chromosome ID')
+parser.add_argument('geneName', type=str, help='gene name')
 parser.add_argument('pos', type=int, help='gene position')
 parser.add_argument('baseWidth', type=float, help='number of bases')
+
+def gene_to_dict(gene, filename):
+    tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
+       mRNAs, strand, chromID = parse_gene.parseGene(filename, gene);
+    exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
+    mRNAs_span = mRNAs
+    mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
+
+    # psis = {}
+    # for sample in samples:
+    #     sample_psis = []
+    #     for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
+    #         if not line.startswith("#") and not line.startswith("sampled"):
+    #             psi, logodds = line.strip().split("\t")
+    #             sample_psis.append(float(psi.split(",")[0]))
+    #     psis[sample] = [sum(psis)/len(psis) for psis in zip(sample_psis)]
+
+    return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
+            'exons': exons, 'mRNAs': mRNAs, 'strand': strand}
 
 @api.route("/pileup")
 class BAMInfo(Resource):
     def get(self):
-        chromID = 'chr17'
-        pos=1
-        base_width = 128
-
         args = parser.parse_args()
-        chromID = args['chromID'] or chromID
-        pos = args['pos'] or pos
-        base_width = args['baseWidth'] or base_width
-        print args
+        # chromID = args['chromID'] or chromID
+        geneName = args['geneName']# or geneName
 
-        sample_data = {}
+        try:
+            with open(genes_filename) as genes_fp:
+                genes = json.load(genes_fp)
+            gene_info = gene_to_dict(geneName, genes[geneName])
+        except Exception as e:
+            print "Gene {0} not found.".format(geneName)
+            raise e
+
+
+        chromID = gene_info["chromID"]
+        pos = args['pos'] or gene_info["tx_start"]
+        base_width = args['baseWidth'] or gene_info["tx_end"]-gene_info["tx_start"]+1
+
+        # find exons present in view range
+        y = [tuple(list(exon) + [i]) for i,exon in enumerate(gene_info["exons"])]
+        # x = [tuple(exon + [i]) for i, exon in enumerate(gene_info["exons"])]
+        exon_tree = IntervalTree.from_tuples(y)
+        curExonIDs = [exon.data for exon in exon_tree[pos:pos+base_width+1]]
+        curRNAs = [RNA for RNA in gene_info["mRNAs"] if set(curExonIDs).intersection(RNA)]
+        curExons = [gene_info["exons"][i] for i in curExonIDs]
+
+        data = {'geneInfo': {'curExons': curExons, 'curRNAs': curRNAs}, "samples": {}}
         for sample, bam_file in sample_files.iteritems():
             sample_positions = []
+
+            # pysam won't take a unicode string, probably should fix
+            chromID = chromID.encode('ascii','ignore')
             samfile = pysam.Samfile(bam_file, "rb")
-            print samples
-            subset_reads = samfile.fetch(reference=chromID, start=pos,end=pos+base_width)
-            wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width)
+            subset_reads = samfile.fetch(reference=chromID, start=pos, end=pos+base_width+1)
+            wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width+1)
             wiggle = wiggle.tolist()
 
             sample_jxns = []
@@ -72,10 +112,9 @@ class BAMInfo(Resource):
                     sample_positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
 
             samfile.close()
-            sample_data[sample] = {'data_values': sample_positions.__len__(), 'positions': sample_positions,
-                                   'jxns': sample_jxns}
+            data["samples"][sample] = {'positions': sample_positions, 'jxns': sample_jxns}
 
-        return sample_data
+        return data
 
     # def post(self):
     #     api.abort(403)
@@ -96,38 +135,50 @@ class BAMHeaderInfo(Resource):
 @api.route("/genes")
 class BAMGenesInfo(Resource):
     def get(self):
-        pickle_dir = os.path.dirname(gff_file)
-        genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
+        # pickle_dir = os.path.dirname(gff_file)
+        # genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
+        #
+        # genes = {}
+        # with open(genes_filename) as jsonF:
+        #     genes = json.load(jsonF)
+        #
+        # def gene_to_dict(gene, filename):
+        #     tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
+        #        mRNAs, strand, chromID = parse_gene.parseGene(filename, gene);
+        #
+        #     exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
+        #     mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
+        #
+        #     psis = {}
+        #     for sample in samples:
+        #         sample_psis = []
+        #         for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
+        #             if not line.startswith("#") and not line.startswith("sampled"):
+        #                 psi, logodds = line.strip().split("\t")
+        #                 sample_psis.append(float(psi.split(",")[0]))
+        #         psi_avg = float(sum(sample_psis))/len(sample_psis)
+        #         psis[sample] = [psi_avg, 1-psi_avg]
+        #
+        #     return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
+        #             'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
 
-        genes = {}
-        with open(genes_filename) as jsonF:
-            genes = json.load(jsonF)
+        # return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
+        print "genes file", genes_filename
 
-        def gene_to_dict(gene, filename):
-            tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-               mRNAs, strand, chromID = parse_gene.parseGene(filename, gene);
+        gene_info = {}
+        with open(genes_filename) as genes_fp:
+            gene_info = json.load(genes_fp)
 
-            exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
-            mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
+        res = {gene: gene_to_dict(gene, filename) for gene, filename in gene_info.iteritems()}
 
-            psis = {}
-            for sample in samples:
-                sample_psis = []
-                for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
-                    if not line.startswith("#") and not line.startswith("sampled"):
-                        psi, logodds = line.strip().split("\t")
-                        sample_psis.append(float(psi.split(",")[0]))
-                psi_avg = float(sum(sample_psis))/len(sample_psis)
-                psis[sample] = [psi_avg, 1-psi_avg]
+        return res
+        # return gene_info.keys()
 
-            return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
-                    'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
-
-        return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
 
 if __name__ == '__main__':
     # app.debug1 = True
     app.run()
 
 def create():
-  return app	
+  return app
+
