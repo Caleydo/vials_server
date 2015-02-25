@@ -87,7 +87,12 @@ class BAMInfo(Resource):
         curRNAs = [RNA for RNA in gene_info["mRNAs"] if set(curExonIDs).intersection(RNA)]
         curExons = [gene_info["exons"][i] for i in curExonIDs]
 
-        data = {'geneInfo': {'curExons': curExons, 'curRNAs': curRNAs}, "samples": {}}
+        data = {'geneInfo': {
+                                'curExons': curExons,
+                                'curRNAs': curRNAs,
+                                'geneSpan': [gene_info['tx_start'], gene_info['tx_end']]
+                            },
+                'samples': {}}
         for sample, bam_file in sample_files.iteritems():
             sample_positions = []
 
