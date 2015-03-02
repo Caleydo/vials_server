@@ -1,0 +1,10 @@
+{
+    "samples_to_bam": {
+        "heartKOa": "/vagrant/genome_data/test-data-cleaned/bam-data/heartKOa.sorted.bam",
+        "heartKOb": "/vagrant/genome_data/test-data-cleaned/bam-data/heartKOb.sorted.bam",
+        "heartWT1": "/vagrant/genome_data/test-data-cleaned/bam-data/heartWT1.sorted.bam",
+        "heartWT2": "/vagrant/genome_data/test-data-cleaned/bam-data/heartWT2.sorted.bam"
+    },
+    "gff_file": "/vagrant/genome_data/test-data-cleaned/events.gff",
+    "read_len": 48
+}
