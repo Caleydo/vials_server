@@ -28,6 +28,8 @@ gff_file = config['SERVER']['gff_file']
 pickle_dir = os.path.join(os.path.dirname(gff_file), "indexed_gff")
 genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
 
+# need to determine this comes from (just found in the sashimi sample settings)
+coverages = {"heartWT1": 6830944, "heartWT2": 14039751, "heartKOa": 4449737, "heartKOb": 6720151}
 
 # create the api application
 app, api = createAPI(__name__, version='1.0', title='Caleydo Web BAM API', description='BAM operations')
@@ -93,6 +95,8 @@ class BAMInfo(Resource):
                                 'geneSpan': [gene_info['tx_start'], gene_info['tx_end']]
                             },
                 'samples': {}}
+
+        max_wiggle = 0
         for sample, bam_file in sample_files.iteritems():
             sample_positions = []
 
@@ -101,7 +105,8 @@ class BAMInfo(Resource):
             samfile = pysam.Samfile(bam_file, "rb")
             subset_reads = samfile.fetch(reference=chromID, start=pos, end=pos+base_width+1)
             wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width+1)
-            wiggle = wiggle.tolist()
+            wiggle = (wiggle / coverages[sample]).tolist()
+            max_wiggle = max(max(wiggle), max_wiggle)
 
             sample_jxns = []
             for jxn_range_str, jxn_count in jxn_reads.iteritems():
@@ -118,6 +123,11 @@ class BAMInfo(Resource):
 
             samfile.close()
             data["samples"][sample] = {'positions': sample_positions, 'jxns': sample_jxns}
+
+        # normalize wiggles
+        for sample in samples:
+            for d in data["samples"][sample]["positions"]:
+                d["wiggle"] = d["wiggle"] / float(max_wiggle)
 
         return data
 
@@ -168,7 +178,6 @@ class BAMGenesInfo(Resource):
         #             'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
 
         # return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
-        print "genes file", genes_filename
 
         gene_info = {}
         with open(genes_filename) as genes_fp:
@@ -181,7 +190,6 @@ class BAMGenesInfo(Resource):
 
 
 if __name__ == '__main__':
-    # app.debug1 = True
     app.run()
 
 def create():
