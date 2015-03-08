@@ -1,10 +1,31 @@
 {
-    "samples_to_bam": {
-        "heartKOa": "/vagrant/genome_data/test-data-cleaned/bam-data/heartKOa.sorted.bam",
-        "heartKOb": "/vagrant/genome_data/test-data-cleaned/bam-data/heartKOb.sorted.bam",
-        "heartWT1": "/vagrant/genome_data/test-data-cleaned/bam-data/heartWT1.sorted.bam",
-        "heartWT2": "/vagrant/genome_data/test-data-cleaned/bam-data/heartWT2.sorted.bam"
-    },
-    "gff_file": "/vagrant/genome_data/test-data-cleaned/events.gff",
-    "read_len": 48
+    "host_base": "/Users/botros/devel/vcg/caleydo-web-server/genome_data",
+    "vagrant_base": "/vagrant/genome_data",
+    "gff_file": "test-data-cleaned/events.gff",
+    "samples": {
+        "heartWT1":
+            {
+                "rel_path": "test-data-cleaned/bam-data/heartWT1.sorted.bam",
+                "coverage": 6830944,
+                "read_len": 48
+            },
+        "heartWT2":
+            {
+                "rel_path": "test-data-cleaned/bam-data/heartWT2.sorted.bam",
+                "coverage": 14039751,
+                "read_len": 48
+            },
+        "heartKOa":
+            {
+                "rel_path": "test-data-cleaned/bam-data/heartKOa.sorted.bam",
+                "coverage": 4449737,
+                "read_len": 48
+            },
+        "heartKOb":
+            {
+                "rel_path": "test-data-cleaned/bam-data/heartKOa.sorted.bam",
+                "coverage": 6720151,
+                "read_len": 48
+            }
+    }
 }

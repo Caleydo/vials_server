@@ -16,20 +16,21 @@ import os
 import json
 
 config = configparser.ConfigParser()
-
 dn = os.path.dirname(os.path.realpath(__file__))
-
 config.read(dn + '/config.ini')
-samples = json.loads(config['SERVER']['samples'])
-bam_dir = config['SERVER']['bam_dir']
-sample_files = {s: os.path.join(bam_dir, s + ".sorted.bam") for s in samples}
-miso_dir = config['SERVER']['miso_dir']
-gff_file = config['SERVER']['gff_file']
-pickle_dir = os.path.join(os.path.dirname(gff_file), "indexed_gff")
-genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
 
-# need to determine this comes from (just found in the sashimi sample settings)
-coverages = {"heartWT1": 6830944, "heartWT2": 14039751, "heartKOa": 4449737, "heartKOb": 6720151}
+project_dir = config['SERVER']['project_dir']
+with open(os.path.join(project_dir, "config.json")) as config_json:
+    project_config = json.load(config_json)
+
+samples = project_config["samples"].keys()
+samples_dir = os.path.join(project_dir, "samples")
+miso_dir = os.path.join(project_dir, "miso-data")
+pickle_dir = os.path.join(project_dir, "indexed_gff")
+genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
+genes_info_file = os.path.join(pickle_dir, "genes_info.json")
+with open(genes_info_file) as genes_info_in:
+    genes_info = json.load(genes_info_in)
 
 # create the api application
 app, api = createAPI(__name__, version='1.0', title='Caleydo Web BAM API', description='BAM operations')
@@ -42,25 +43,6 @@ parser.add_argument('geneName', type=str, help='gene name')
 parser.add_argument('pos', type=int, help='gene position')
 parser.add_argument('baseWidth', type=float, help='number of bases')
 
-def gene_to_dict(gene, filename):
-    tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-       mRNAs, strand, chromID = parse_gene.parseGene(filename, gene);
-    exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
-    mRNAs_span = mRNAs
-    mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
-
-    # psis = {}
-    # for sample in samples:
-    #     sample_psis = []
-    #     for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
-    #         if not line.startswith("#") and not line.startswith("sampled"):
-    #             psi, logodds = line.strip().split("\t")
-    #             sample_psis.append(float(psi.split(",")[0]))
-    #     psis[sample] = [sum(psis)/len(psis) for psis in zip(sample_psis)]
-
-    return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
-            'exons': exons, 'mRNAs': mRNAs, 'strand': strand}
-
 @api.route("/pileup")
 class BAMInfo(Resource):
     def get(self):
@@ -69,9 +51,9 @@ class BAMInfo(Resource):
         geneName = args['geneName']# or geneName
 
         try:
-            with open(genes_filename) as genes_fp:
-                genes = json.load(genes_fp)
-            gene_info = gene_to_dict(geneName, genes[geneName])
+            with open(genes_info_file) as genes_info_in:
+                genes_info = json.load(genes_info_in)
+            gene_info = genes_info[geneName]
         except Exception as e:
             print "Gene {0} not found.".format(geneName)
             raise e
@@ -83,11 +65,45 @@ class BAMInfo(Resource):
 
         # find exons present in view range
         y = [tuple(list(exon) + [i]) for i,exon in enumerate(gene_info["exons"])]
-        # x = [tuple(exon + [i]) for i, exon in enumerate(gene_info["exons"])]
         exon_tree = IntervalTree.from_tuples(y)
-        curExonIDs = [exon.data for exon in exon_tree[pos:pos+base_width+1]]
-        curRNAs = [RNA for RNA in gene_info["mRNAs"] if set(curExonIDs).intersection(RNA)]
-        curExons = [gene_info["exons"][i] for i in curExonIDs]
+        print y
+        full_overlaps = IntervalTree(exon_tree[pos:pos+base_width+1])
+        curExons = []
+        exon_group_ids = {}
+        visited = set()
+        while full_overlaps:
+            # get next exon in view
+            cur_exon = full_overlaps.pop()
+            exon_group = [cur_exon]
+            # find exons that overlap this one
+            cur_overlaps = full_overlaps[cur_exon.begin:cur_exon.end]
+            exon_start, exon_end = cur_exon.begin, cur_exon.end
+            while cur_overlaps:
+                # mark overlapping exons as visited and remove from cur_overlaps
+                overlap_exon = cur_overlaps.pop()
+                exon_group.append(overlap_exon)
+                visited.add(overlap_exon)
+                # update group range
+                exon_start = min(exon_start, overlap_exon.begin)
+                exon_end = max(exon_end, overlap_exon.end)
+                # widen group to include overlapping exons not seen before
+                new_overlaps = [exon for exon in full_overlaps[overlap_exon.begin:overlap_exon.end]
+                                     if  exon not in visited]
+                cur_overlaps = cur_overlaps.union(new_overlaps)
+            # remove full group of exons
+            full_overlaps.remove_overlap(exon_start, exon_end)            
+            curExons.append([exon_start, exon_end])
+
+            # map combined exon to single id
+            for x in exon_group:
+                exon_group_ids[x.data] = len(curExons) - 1
+
+        # this could fail if two exons in the same group but don't themselves overlap
+        print curExons
+        curRNAs = []
+        for RNA in gene_info["mRNAs"]:
+            if set(exon_group_ids.keys()).intersection(RNA):
+                curRNAs.append([exon_group_ids[i] for i in RNA])
 
         data = {'geneInfo': {
                                 'curExons': curExons,
@@ -97,15 +113,17 @@ class BAMInfo(Resource):
                 'samples': {}}
 
         max_wiggle = 0
-        for sample, bam_file in sample_files.iteritems():
+        for sample, sample_info in project_config["samples"].iteritems():
             sample_positions = []
 
             # pysam won't take a unicode string, probably should fix
             chromID = chromID.encode('ascii','ignore')
-            samfile = pysam.Samfile(bam_file, "rb")
+            bam_file_vagrant_path = os.path.join(project_config["vagrant_base"], sample_info["rel_path"])
+            samfile = pysam.Samfile(bam_file_vagrant_path, "rb")
+            print chromID, pos, base_width
             subset_reads = samfile.fetch(reference=chromID, start=pos, end=pos+base_width+1)
             wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width+1)
-            wiggle = (wiggle / coverages[sample]).tolist()
+            wiggle = (wiggle / sample_info["coverage"]).tolist()
             max_wiggle = max(max(wiggle), max_wiggle)
 
             sample_jxns = []
@@ -138,8 +156,9 @@ class BAMInfo(Resource):
 class BAMHeaderInfo(Resource):
     def get(self):
         headers = {}
-        for bam_file in sample_files.values():
-            samfile = pysam.Samfile(bam_file, "rb")
+        for sample, sample_info in project_config["samples"].iteritems():
+            bam_file_vagrant_path = os.path.join(project_config["vagrant_base"], sample_info["rel_path"])
+            samfile = pysam.Samfile(bam_file_vagrant_path, "rb")
             headers[bam_file] = samfile.header
             samfile.close()
         return headers
@@ -150,43 +169,9 @@ class BAMHeaderInfo(Resource):
 @api.route("/genes")
 class BAMGenesInfo(Resource):
     def get(self):
-        # pickle_dir = os.path.dirname(gff_file)
-        # genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
-        #
-        # genes = {}
-        # with open(genes_filename) as jsonF:
-        #     genes = json.load(jsonF)
-        #
-        # def gene_to_dict(gene, filename):
-        #     tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-        #        mRNAs, strand, chromID = parse_gene.parseGene(filename, gene);
-        #
-        #     exons = sorted(set([tuple(exon) for RNA in mRNAs for exon in RNA]), key=lambda x: x[0])
-        #     mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
-        #
-        #     psis = {}
-        #     for sample in samples:
-        #         sample_psis = []
-        #         for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
-        #             if not line.startswith("#") and not line.startswith("sampled"):
-        #                 psi, logodds = line.strip().split("\t")
-        #                 sample_psis.append(float(psi.split(",")[0]))
-        #         psi_avg = float(sum(sample_psis))/len(sample_psis)
-        #         psis[sample] = [psi_avg, 1-psi_avg]
-        #
-        #     return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
-        #             'exons': exons, 'mRNAs': mRNAs, 'psis': psis, 'strand': strand}
-
-        # return {gene: gene_to_dict(gene, filename) for gene, filename in genes.iteritems()}
-
-        gene_info = {}
-        with open(genes_filename) as genes_fp:
-            gene_info = json.load(genes_fp)
-
-        res = {gene: gene_to_dict(gene, filename) for gene, filename in gene_info.iteritems()}
-
-        return res
-        # return gene_info.keys()
+        # geneinfo = {gene: info for gene, info in genes_info.iteritems()}
+        geneinfo = {gene: info for gene, info in genes_info.iteritems() if info["chromID"] == "11"}
+        return geneinfo
 
 
 if __name__ == '__main__':
