@@ -25,7 +25,6 @@ with open(os.path.join(project_dir, "config.json")) as config_json:
 
 samples = project_config["samples"].keys()
 samples_dir = os.path.join(project_dir, "samples")
-miso_dir = os.path.join(project_dir, "miso-data")
 pickle_dir = os.path.join(project_dir, "indexed_gff")
 genes_filename = os.path.join(pickle_dir, "genes_to_filenames.json")
 genes_info_file = os.path.join(pickle_dir, "genes_info.json")
@@ -66,7 +65,6 @@ class BAMInfo(Resource):
         # find exons present in view range
         y = [tuple(list(exon) + [i]) for i,exon in enumerate(gene_info["exons"])]
         exon_tree = IntervalTree.from_tuples(y)
-        print y
         full_overlaps = IntervalTree(exon_tree[pos:pos+base_width+1])
         curExons = []
         exon_group_ids = {}
@@ -99,7 +97,6 @@ class BAMInfo(Resource):
                 exon_group_ids[x.data] = len(curExons) - 1
 
         # this could fail if two exons in the same group but don't themselves overlap
-        print curExons
         curRNAs = []
         for RNA in gene_info["mRNAs"]:
             if set(exon_group_ids.keys()).intersection(RNA):
@@ -114,13 +111,13 @@ class BAMInfo(Resource):
 
         max_wiggle = 0
         for sample, sample_info in project_config["samples"].iteritems():
+            sample_dir = os.path.join(project_dir, "samples", sample)
             sample_positions = []
 
             # pysam won't take a unicode string, probably should fix
             chromID = chromID.encode('ascii','ignore')
             bam_file_vagrant_path = os.path.join(project_config["vagrant_base"], sample_info["rel_path"])
             samfile = pysam.Samfile(bam_file_vagrant_path, "rb")
-            print chromID, pos, base_width
             subset_reads = samfile.fetch(reference=chromID, start=pos, end=pos+base_width+1)
             wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos+base_width+1)
             wiggle = (wiggle / sample_info["coverage"]).tolist()
@@ -139,8 +136,24 @@ class BAMInfo(Resource):
                 if ((pileupcolumn.pos>=pos) & (pileupcolumn.pos-base_width<pos)):
                     sample_positions.append({'pos': pileupcolumn.pos, 'no': pileupcolumn.n, 'seq': seqs, 'wiggle': wiggle.pop(0)})
 
+            # amended from miso's processing code
+            sample_psis = []
+            try:
+                with open(genes_filename) as genes_in:
+                    genes_to_filenames = json.load(genes_in)
+                    gene_filename = os.path.splitext(genes_to_filenames[geneName])[0] + ".miso"
+                    miso_path = os.path.join(sample_dir, "miso-data", gene_filename)
+                    with open(miso_path) as miso_in:
+                        for line in miso_in.xreadlines():
+                            if not line.startswith("#") and not line.startswith("sampled"):
+                                psi, logodds = line.strip().split("\t")
+                                sample_psis.append(map(float, psi.split(",")))
+                        sample_psis = [sum(psis)/len(psis) for psis in zip(*sample_psis)]
+            except:
+                print "Psis could not be found for sample {0}.".format(sample)
+
             samfile.close()
-            data["samples"][sample] = {'positions': sample_positions, 'jxns': sample_jxns}
+            data["samples"][sample] = {'positions': sample_positions, 'jxns': sample_jxns, 'psis': sample_psis}
 
         # normalize wiggles
         for sample in samples:
@@ -169,8 +182,8 @@ class BAMHeaderInfo(Resource):
 @api.route("/genes")
 class BAMGenesInfo(Resource):
     def get(self):
-        # geneinfo = {gene: info for gene, info in genes_info.iteritems()}
-        geneinfo = {gene: info for gene, info in genes_info.iteritems() if info["chromID"] == "11"}
+        geneinfo = {gene: info for gene, info in genes_info.iteritems()}
+        # geneinfo = {gene: info for gene, info in genes_info.iteritems() if info["chromID"] == "11"}
         return geneinfo
 
 

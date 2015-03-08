@@ -17,21 +17,11 @@ def gene_to_dict(gene, filename):
     mRNAs_span = mRNAs
     mRNAs = [sorted([exons.index(tuple(exon)) for exon in RNA]) for RNA in mRNAs]
 
-    # psis = {}
-    # for sample in samples:
-    #     sample_psis = []
-    #     for line in open(os.path.join(miso_dir, sample, chromID, gene + ".miso")):
-    #         if not line.startswith("#") and not line.startswith("sampled"):
-    #             psi, logodds = line.strip().split("\t")
-    #             sample_psis.append(float(psi.split(",")[0]))
-    #     psis[sample] = [sum(psis)/len(psis) for psis in zip(sample_psis)]
-
     return {'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
             'exons': exons, 'mRNAs': mRNAs, 'strand': strand}
 
-def build_project(output_dir, config_file):
+def build_project(output_dir, config_file, indexed_gff):
     gff_dir = os.path.join(output_dir, "indexed_gff")
-    miso_dir = os.path.join(output_dir, "miso-data")
     genes_filename = os.path.join(gff_dir, "genes_to_filenames.json")
     genes_info_file = os.path.join(gff_dir, "genes_info.json")
 
@@ -63,6 +53,7 @@ def build_project(output_dir, config_file):
         bam_file_host_path = os.path.join(config["host_base"], sample_info["rel_path"])
 
         # run miso on bamfile
+        miso_dir = os.path.join(sample_dir, "miso-data")
         main_logger = get_main_logger(os.path.join(sample_dir, "logs"))
         compute_all_genes_psi(gff_dir, bam_file_host_path, sample_info["read_len"],
                               miso_dir, main_logger)
