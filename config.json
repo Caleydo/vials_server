@@ -1,0 +1,5 @@
+{
+  "server":{
+    "data_root":  "/vagrant_data/genes_new_api/project_data"
+  }
+}

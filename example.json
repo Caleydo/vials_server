@@ -1,0 +1,30 @@
+{
+  "gene":{
+    "exons":{
+      "ex0001":{"start":1000, "end":1500, "id": "ex0001"},
+      "ex0002":{"start":1800, "end":2100, "id": "ex0002"},
+      "ex0003":{"start":2300, "end":2700, "id": "ex0003"}
+    },
+    "jxns":{
+      "jxn0001":{"start":1500, "end":1800, "startExon":"ex0001", "endExon":"ex0002", "id":"jxn0001"},
+      "jxn0002":{"start":1500, "end":1800, "startExon":"ex0001", "endExon":"ex0002", "id":"jxn0002"}
+    },
+    "isoforms":{
+      "iso0001":{"jxns":["jxn0001", "jxn0002"], "id":"iso0001"}
+    }
+
+  },
+  "samples":{
+      "abc":{
+        "name":"teh great sample",
+        "id":"abc",
+        "source":"bodymap",
+        "basepairs":{"start":1000, "end":1010, "vals":[1,2,3,4,5,6,7,8,9,10]},
+        "exons":[{"exon":"ex0002", "weight":0.9},{"exon":"ex0001", "weight":0.8},{"exon":"ex0003", "weight":0.1}  ],
+        "jxns":[{"jxn":"jxn0002", "weight":0.9}, {"jxn":"jxn0002", "weight":0.2} ],
+        "isoforms":[{"isoform":"iso0001", "weight":0.1}]
+
+      }
+  }
+}
+
