@@ -97,6 +97,7 @@ samples_dir_in_project = lambda x: os.path.join(x, "samples")
 config_file_in_project = lambda x: os.path.join(x, "config.json")
 summary_dir_in_project = lambda x: os.path.join(x, "summary")
 summary_file_in_project = lambda project, sample: os.path.join(project, "summary", "%s.miso_summary.json" % sample)
+bam_file_in_project_and_sample = lambda project, sample_info:  os.path.join(project["host_base"], sample_info["rel_path"])
 
 gene_info_in_ref_genome = lambda x: os.path.join(x, "genes_to_filenames.json")
 config_file_in_ref_genome = lambda x: os.path.join(x, "meta.json")
@@ -297,7 +298,6 @@ class GeneInfo(Resource):
         cur_names = []
         cur_exon_count = 0
         for x in sorted(list(itree)):
-            print x
             if cur_max == -1:  # for init
                 cur_min = x.begin
                 cur_max = x.end
@@ -376,27 +376,90 @@ class GeneInfo(Resource):
         # --------------------------
 
         isoform_measured = []
+        jxns = []
         for datagroup in project["data"]:
             data_type = datagroup['data_type']
 
             # TODO: modularize -- now only BAM
             for sample, sample_info in datagroup['samples'].iteritems():
+
+                # miso informations
                 x = summary_file_in_project(project['dir'], sample)
                 with open(summary_file_in_project(project['dir'], sample), 'r') as miso_file:
                     miso_info = json.load(miso_file);
                     meanCount = 0
                     for isodesc in miso_info["isoforms"]:
+                        mean = miso_info['miso_posterior_mean'][meanCount]
+                        meanCount += 1
+                        # isoKey = isodesc.strip("'")
+                        # if isoKey in isoform_measured:
+                        #     isoform_measured[isoKey].append({"sample": sample, "mean": mean})
+                        # else:
+                        #     isoform_measured[isoKey] = [{"sample": sample, "mean": mean}]
                         ex_orig = []
                         ex_new = []
                         ex_infos = []
-                        mean = miso_info['miso_posterior_mean'][meanCount]
-                        meanCount += 1
+
                         for isopart in isodesc.strip("'").split("_"):
                             ex_orig.append(isopart)
                             ex_infos.append(exonMap[isopart])
                             ex_new.append(exonExonMap[isopart]["id"])
 
-                        # isoform_measured.append({"orig":ex_orig, "new":ex_new, "info": ex_infos, "mean": mean, "sample":sample})
+                        isoform_measured.append({"orig":ex_orig, "new":ex_new, "info": ex_infos, "mean": mean, "sample":sample})
+
+
+
+
+                # junction information
+                # pysam won't take a unicode string, probably should fix
+                sample_jxns_file_name = os.path.join(project['dir'], sample, "jxns.json") #TODO: create a head function for that
+                with open(sample_jxns_file_name) as jxns_file:
+                    jxns_info = json.load(jxns_file)
+                    jxns_file.close()
+                    sample_jxns = {"sample":sample, "jxns": []}
+                    for range, value in jxns_info.iteritems():
+                        start, end = range.split(":")
+                        sample_jxns["jxns"].append({"start": start, "end": end, "weight": value})
+
+
+                    jxns.append(sample_jxns)
+
+
+
+
+                # chromID_ascii = chromID.encode('ascii', 'ignore')
+                # bam_file_path = bam_file_in_project_and_sample(project, sample_info)
+                # bamfile = pysam.Samfile(bam_file_path, 'rb')
+                # sample_reads = bamfile.fetch(reference=chromID_ascii, start=tx_start, end=tx_end)
+                # print "read"
+                # wiggle, sample_jxns = readsToWiggle_pysam(sample_reads, tx_start, tx_end)
+                # print "x"
+#             bam_file_vagrant_path = os.path.join(project_config["vagrant_base"], sample_info["rel_path"])
+#             samfile = pysam.Samfile(bam_file_vagrant_path, "rb")
+#             subset_reads = samfile.fetch(reference=chromID, start=pos, end=pos + base_width + 1)
+#             wiggle, jxn_reads = readsToWiggle_pysam(subset_reads, pos, pos + base_width + 1)
+
+
+
+
+
+
+
+
+
+        # map isoforms with before
+
+
+        # ex_orig = []
+        # ex_new = []
+        # ex_infos = []
+
+        # for isopart in isodesc.strip("'").split("_"):
+        #     ex_orig.append(isopart)
+        #     ex_infos.append(exonMap[isopart])
+        #     ex_new.append(exonExonMap[isopart]["id"])
+
+        # isoform_measured.append({"orig":ex_orig, "new":ex_new, "info": ex_infos, "mean": mean, "sample":sample})
 
 
 
@@ -413,7 +476,7 @@ class GeneInfo(Resource):
 
         return {'iso_measured':isoform_measured, 'chromID': chromID, 'tx_start': tx_start, 'tx_end': tx_end,
                 # 'mRNAs': mRNAs,
-                'strand': strand, 'exons': exons, "isoforms": isoforms}
+                'strand': strand, 'exons': exons, "isoforms": isoforms, "jxns": jxns}
 
 
 #  Test: ENSG00000168769
