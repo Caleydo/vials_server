@@ -19,7 +19,7 @@ import json
 import pprint
 
 from handlers.bodymap import BodyMapHandler
-
+from handlers.tcga import TCGAHandler
 
 # create the api application
 app, api = createAPI(__name__, version='1.0', title='Caleydo AltSplice API', description='splicing data handler')
@@ -53,33 +53,15 @@ class Helpers:
         res["dir"] = path
         return os.path.basename(path), res  # TODO: hack until name in config file
 
-    @staticmethod
-    def load_genome_mapping(project):
-        if project["ref_genome"] == "local":
-            ref_genome_dir = os.path.join(project["dir"], "local_ref_genome", project["local_ref_genome"])
-        else:
-            ref_genome_dir = os.path.join(ref_genomes_root_dir, project["ref_genome"])
 
-        with open(gene_info_in_ref_genome(ref_genome_dir)) as jsonData:
-            loaded = json.load(jsonData)
-            # clean absoulte path: TODO: should be solved by project creator
-            res = {}
-            if project["ref_genome"] == "local":
-                for index, key in enumerate(loaded):
-                    path = loaded[key]
-                    res[key] = os.path.join(ref_genome_dir,
-                                             os.path.basename(os.path.dirname(path)),
-                                             os.path.basename(path))
-            else:
-                res = loaded
-
-            jsonData.close()
-        return res
 
     @staticmethod
-    def get_data_handler(data_type):
+    def get_data_handler(data_type, data_root):
         if data_type == "BodyMap":
-            return BodyMapHandler()
+            return BodyMapHandler(data_root)
+        elif data_type == "TCGA":
+            return TCGAHandler(data_root)
+
 
 
 
@@ -292,42 +274,6 @@ parser.add_argument('projectID', type=str, help='projectID')
 
 @api.route("/gene")
 class GeneInfo(Resource):
-    def merge_exon_ranges(self, exons):
-        # maybe not the most efficient -- TODO: check for better method
-        itree = IntervalTree()
-        for exon in exons:
-            itree[exon["start"]:exon["end"]] = exon["id"]
-        itree.split_overlaps()
-        merged_ranges = []
-        cur_min = -1
-        cur_max = -1
-        cur_names = []
-        cur_exon_count = 0
-        for x in sorted(list(itree)):
-            if cur_max == -1:  # for init
-                cur_min = x.begin
-                cur_max = x.end
-                cur_names.append(x.data)
-            else:
-                if x.begin <= cur_max + 1:  # if connected
-                    cur_max = x.end
-                    cur_names.append(x.data)
-                else:  # if not connected
-                    exid = "ex" + format(cur_exon_count, '05d')
-                    merged_ranges.append({"start": cur_min, "end": cur_max, "names": list(set(cur_names)), "id": exid})
-
-                    cur_exon_count += 1
-                    cur_min = x.begin
-                    cur_max = x.end
-                    cur_names = [x.data]
-
-        # don't forget the last one
-        if cur_names.__len__() > 0:
-            exid = "ex" + format(cur_exon_count, '05d')
-            merged_ranges.append({"start": cur_min, "end": cur_max, "names": list(set(cur_names)), "id": exid})
-        return merged_ranges
-
-
 
     def get(self):
         args = parser.parse_args()
@@ -342,62 +288,38 @@ class GeneInfo(Resource):
         if args["projectID"]:
             project = all_projects[args["projectID"]]
 
-        # --------------------------
-        # reference data
-        # --------------------------
-
-
-        # map gene name to a file
-        gene_file_mapping = Helpers.load_genome_mapping(project)
-        gene_file = gene_file_mapping[geneName]
-
-        # parse gene info
-        tx_start, tx_end, exon_starts, exon_ends, gene_obj, \
-        mRNAs, strand, chromID = parseGene(gene_file, geneName)
-
-        # create exons
-        exons = []
-        exonMap = {}
-        for x in gene_obj.parts:
-            ex_info = {"start": x.start, "end": x.end, "id": x.label}
-            exons.append(ex_info)
-            exonMap[x.label] = ex_info
-
-        # merge exons
-        merged_ranges = self.merge_exon_ranges(exons)
-
-        # create a mapping between merged exon version and new name
-        exonExonMap = {}
-        for newExon in merged_ranges:
-            for oldExon in newExon["names"]:
-                exonExonMap[oldExon] = newExon
-
-        # add (reference) isoforms
-        isoforms = []
-        for x in gene_obj.isoforms:
-            related_exons = map(lambda exonName: exonExonMap[exonName], x.desc )
-            isoforms.append({"start": x.genomic_start, "end": x.genomic_end, "exons": related_exons, "id": x.label})
-
-
-        # --------------------------
-        # project data
-        # --------------------------
-
         isoform_measured = []
         jxns = []
         all_sapmple_infos = {}
         all_jxns_starts = []
         all_jxns_ends = []
+        all_exons = {}
+        all_isoforms = {}
+
+
+        chromID, strand, tx_end, tx_start = (0, "+", 0, 100)
 
         for datagroup in project["data"]:
             data_type = datagroup['data_type']
-            handler = Helpers.get_data_handler(data_type)
-            handler.read_data(all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup, exonExonMap,
-                           exonMap, isoform_measured, jxns, project)
+            handler = Helpers.get_data_handler(data_type, data_root)
+
+            # --------------------------
+            # reference data
+            # --------------------------
+            chromID,  strand, tx_end, tx_start, exons, isoforms = handler.generate_meta_info(geneName, project, datagroup)
+            all_exons.update(exons)
+            all_isoforms.update(isoforms)
+
+            # --------------------------
+            # project data
+            # --------------------------
+            handler.read_data(all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
+                              isoform_measured, jxns, project)
 
         # settify and sort
         all_jxns_starts = sorted(list(set(all_jxns_starts)))
         all_jxns_ends = sorted(list(set(all_jxns_ends)))
+
         # ex_orig = []
         # ex_new = []
         # ex_infos = []
@@ -409,18 +331,22 @@ class GeneInfo(Resource):
 
         # isoform_measured.append({"orig":ex_orig, "new":ex_new, "info": ex_infos, "mean": mean, "sample":sample})
 
+        chromID = chromID.replace("chr","")
 
+        theGene = {'chromID': chromID,
+                   'start': tx_start,
+                   'end': tx_end,
+                   'strand': strand,
+                   'exons': all_exons,
+                   'isoforms': all_isoforms,
+                   "name": geneName }
 
-
-
-
-
-
-
-
-
-        theGene = {'chromID': chromID, 'start': tx_start, 'end': tx_end, 'strand': strand, 'exons':exons }
-        theData = {"jxns": {"all_starts": all_jxns_starts, "all_ends": all_jxns_ends, "weights": jxns}}
+        theData = {"jxns":
+                       {"all_starts": all_jxns_starts,
+                        "all_ends": all_jxns_ends,
+                        "weights": jxns},
+                   "isoforms":isoform_measured
+                   }
 
         return {'gene': theGene,
                 'measures': theData,
@@ -445,7 +371,14 @@ class GeneOverview(Resource):
         if args["projectID"]:
             project = all_projects[args["projectID"]]
 
-        geneIDs = Helpers.load_genome_mapping(project).keys()
+        geneIDs = []
+        for datagroup in project["data"]:
+            data_type = datagroup['data_type']
+            handler = Helpers.get_data_handler(data_type, data_root)
+            genes = handler.get_genes(project, datagroup)
+            geneIDs.extend(genes)
+
+        # geneIDs = Helpers.load_genome_mapping(project).keys()
 
         return geneIDs
 
