@@ -102,6 +102,8 @@ class BodyMapHandler:
             for oldExon in newExon["names"]:
                 exonExonMap[oldExon] = newExon
 
+
+
         # add (reference) isoforms
         isoforms = {}
         self.isoformIDMap ={}
@@ -110,10 +112,10 @@ class BodyMapHandler:
             isoforms[x.label] = {"start": x.genomic_start, "end": x.genomic_end, "exons": related_exons, "id": x.label}
             self.isoformIDMap["_".join(related_exons)] = x.label
 
-        self.exonExonMap = exonExonMap
-        self.exonMap = exonMap
+        # self.exonExonMap = exonExonMap
+        # self.exonMap = exonMap
 
-        return chromID, strand, tx_end, tx_start, exonMap, isoforms
+        return chromID, strand, tx_end, tx_start, exonMap, isoforms, merged_ranges
 
     def read_data(self, geneName, add_reads, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup, isoform_measured, jxns, sample_reads, project):
         # TODO: modularize -- now only BAM

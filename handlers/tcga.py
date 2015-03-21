@@ -1,6 +1,7 @@
 import os
 from flask import json
 from misopy.parse_gene import parseGene
+from bodymap import BodyMapHandler
 
 __author__ = 'hen'
 class TCGAHandler:
@@ -62,7 +63,11 @@ class TCGAHandler:
                     newID = self.unifyExonID(ex["id"])
                     exons[newID] = {"start": ex["start"], "end": ex["end"], "id": newID, "name": ex["name"]}
 
-            exon_inf_file.close()
+
+        merged_ranges = BodyMapHandler.merge_exon_ranges(exons)
+
+
+
 
         isoforms = {}
         with open(self.isoforms_info_file_in_project(project)) as iso_info_file:
@@ -71,7 +76,7 @@ class TCGAHandler:
                     isoform["exons"] = map(self.unifyExonID, isoform["exons"])
                     isoforms[id] = isoform
 
-        return chromID, strand, tx_end, tx_start, exons, isoforms
+        return chromID, strand, tx_end, tx_start, exons, isoforms, merged_ranges
 
     def read_data(self, geneName, add_reads,  all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
                   isoform_measured, jxns, sample_reads, project):

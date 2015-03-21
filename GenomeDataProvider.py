@@ -313,7 +313,7 @@ class GeneInfo(Resource):
             # --------------------------
             # reference data
             # --------------------------
-            chromID,  strand, tx_end, tx_start, exons, isoforms = handler.generate_meta_info(geneName, project, datagroup)
+            chromID,  strand, tx_end, tx_start, exons, isoforms, merged_ranges = handler.generate_meta_info(geneName, project, datagroup)
             all_exons.update(exons)
             all_isoforms.update(isoforms)
 
@@ -346,7 +346,9 @@ class GeneInfo(Resource):
                    'strand': strand,
                    'exons': all_exons,
                    'isoforms': all_isoforms,
-                   "name": geneName }
+                   "name": geneName,
+                   "merged_ranges": merged_ranges
+                   }
 
         theData = {"jxns":
                        {"all_starts": all_jxns_starts,
