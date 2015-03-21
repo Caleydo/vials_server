@@ -40,6 +40,13 @@ class TCGAHandler:
     def get_genes(self, project, datagroup):
         return datagroup["geneIDs"]
 
+
+    def unifyExonID(self, oldID):
+        chromID, range, strand = oldID.split(":")
+        chromID = chromID.replace("chr", "")
+        range = range.replace("-", "_")
+        return chromID+"_" + range + "_" + strand
+
     def generate_meta_info(self, geneName, project, datagroup):
         # map gene name to a file
         gene_file_mapping = self.load_genome_mapping(project)
@@ -52,7 +59,8 @@ class TCGAHandler:
         with open(self.exon_info_file_in_project(project)) as exon_inf_file:
             for _, ex in json.load(exon_inf_file).iteritems():
                 if ex["gene_id"] == geneName:
-                    exons[ex["id"]] = {"start": ex["start"], "end": ex["end"], "id": ex["id"], "name": ex["name"]}
+                    newID = self.unifyExonID(ex["id"])
+                    exons[newID] = {"start": ex["start"], "end": ex["end"], "id": newID, "name": ex["name"]}
 
             exon_inf_file.close()
 
@@ -60,6 +68,7 @@ class TCGAHandler:
         with open(self.isoforms_info_file_in_project(project)) as iso_info_file:
             for id, isoform in json.load(iso_info_file).iteritems():
                 if isoform['gene_id'] == geneName:
+                    isoform["exons"] = map(self.unifyExonID, isoform["exons"])
                     isoforms[id] = isoform
 
         return chromID, strand, tx_end, tx_start, exons, isoforms
@@ -88,7 +97,7 @@ class TCGAHandler:
                 allExons = json.load(exons_file)
 
                 for id, value in allExons.iteritems():
-                    all_sapmple_infos.append(
+                    sample_reads.append(
                         {
                             "exon": id,
                             "sample": sample,
