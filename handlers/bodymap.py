@@ -164,6 +164,10 @@ class BodyMapHandler:
             sample_reads_file_name = os.path.join(project['dir'], sample, geneName,
                                                  "wiggles_10k.json")  # TODO: create a head function for that
             with open(sample_reads_file_name) as reads_file:
-                sample_reads.append({"sample": sample, "weights": json.load(reads_file)})
+                all_samples = json.load(reads_file)
+                sample_reads.append({"sample": sample,
+                                     "min": min(all_samples),
+                                     "max": max(all_samples),
+                                     "weights": all_samples})
 
     # def fillGeneIDs
