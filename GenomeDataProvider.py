@@ -105,6 +105,7 @@ parser.add_argument('geneName', type=str, help='gene name')
 parser.add_argument('pos', type=int, help='gene position')
 parser.add_argument('baseWidth', type=float, help='number of bases')
 parser.add_argument('projectID', type=str, help='projectID')
+parser.add_argument('noReads', type=bool, help='projectID')
 
 # project_dir = config['server']['project_dir']
 #
@@ -288,6 +289,11 @@ class GeneInfo(Resource):
         if args["projectID"]:
             project = all_projects[args["projectID"]]
 
+
+        add_reads = True
+        if args["noReads"]:
+            add_reads = False
+
         isoform_measured = []
         jxns = []
         all_sapmple_infos = {}
@@ -314,7 +320,7 @@ class GeneInfo(Resource):
             # --------------------------
             # project data
             # --------------------------
-            handler.read_data(geneName, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
+            handler.read_data(geneName, add_reads, all_jxns_ends, all_jxns_starts, all_sapmple_infos,  datagroup,
                               isoform_measured, jxns, sample_reads, project)
 
         # settify and sort

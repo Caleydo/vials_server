@@ -73,7 +73,7 @@ class TCGAHandler:
 
         return chromID, strand, tx_end, tx_start, exons, isoforms
 
-    def read_data(self, geneName, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
+    def read_data(self, geneName, add_reads,  all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
                   isoform_measured, jxns, sample_reads, project):
 
         for sample in datagroup['samples']:
@@ -93,16 +93,17 @@ class TCGAHandler:
                     all_jxns_ends.append(weight["end"])
                     jxns.append(weight)
 
-            with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
-                allExons = json.load(exons_file)
+            if add_reads:
+                with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
+                    allExons = json.load(exons_file)
 
-                for id, value in allExons.iteritems():
-                    sample_reads.append(
-                        {
-                            "exon": id,
-                            "sample": sample,
-                            "weight": float(value)
-                        })
+                    for id, value in allExons.iteritems():
+                        sample_reads.append(
+                            {
+                                "exon": id,
+                                "sample": sample,
+                                "weight": float(value)
+                            })
 
 
             # -- DATA ---
