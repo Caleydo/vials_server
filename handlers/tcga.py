@@ -85,6 +85,18 @@ class TCGAHandler:
                     jxns.append(weight)
                 jxns_file.close()
 
+            with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
+                allExons = json.load(exons_file)
+
+                for id, value in allExons.iteritems():
+                    all_sapmple_infos.append(
+                        {
+                            "exon": id,
+                            "sample": sample,
+                            "weight": float(value)
+                        })
+
+
             # -- DATA ---
             # "uc003tqi.2": {
             #   "scaled_estimate": "0",
