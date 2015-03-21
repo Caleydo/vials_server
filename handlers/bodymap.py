@@ -115,7 +115,7 @@ class BodyMapHandler:
 
         return chromID, strand, tx_end, tx_start, exonMap, isoforms
 
-    def read_data(self, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup, isoform_measured, jxns, project):
+    def read_data(self, geneName, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup, isoform_measured, jxns, sample_reads, project):
         # TODO: modularize -- now only BAM
         for sample, sample_info in datagroup['samples'].iteritems():
             all_sapmple_infos[sample] = {"id": sample, "type": self.data_type, "origin": sample_info}
@@ -151,15 +151,19 @@ class BodyMapHandler:
 
             # junction information
             # pysam won't take a unicode string, probably should fix
-            sample_jxns_file_name = os.path.join(project['dir'], sample,
+            sample_jxns_file_name = os.path.join(project['dir'], sample, geneName,
                                                  "jxns.json")  # TODO: create a head function for that
             with open(sample_jxns_file_name) as jxns_file:
                 jxns_info = json.load(jxns_file)
-                jxns_file.close()
                 for range, value in jxns_info.iteritems():
                     start, end = range.split(":")
                     jxns.append({"start": start, "end": end, "weight": value, "sample": sample})
                     all_jxns_starts.append(start)
                     all_jxns_ends.append(end)
+
+            sample_reads_file_name = os.path.join(project['dir'], sample, geneName,
+                                                 "wiggles_10k.json")  # TODO: create a head function for that
+            with open(sample_reads_file_name) as reads_file:
+                sample_reads.append({"sample": sample, "weights": json.load(reads_file)})
 
     # def fillGeneIDs

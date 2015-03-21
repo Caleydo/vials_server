@@ -64,8 +64,8 @@ class TCGAHandler:
 
         return chromID, strand, tx_end, tx_start, exons, isoforms
 
-    def read_data(self, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
-                  isoform_measured, jxns, project):
+    def read_data(self, geneName, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
+                  isoform_measured, jxns, sample_reads, project):
 
         for sample in datagroup['samples']:
 
@@ -83,7 +83,6 @@ class TCGAHandler:
                     all_jxns_starts.append(weight["start"])
                     all_jxns_ends.append(weight["end"])
                     jxns.append(weight)
-                jxns_file.close()
 
             # -- DATA ---
             # "uc003tqi.2": {
