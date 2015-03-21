@@ -295,6 +295,7 @@ class GeneInfo(Resource):
         all_jxns_ends = []
         all_exons = {}
         all_isoforms = {}
+        sample_reads = []
 
 
         chromID, strand, tx_end, tx_start = (0, "+", 0, 100)
@@ -313,8 +314,8 @@ class GeneInfo(Resource):
             # --------------------------
             # project data
             # --------------------------
-            handler.read_data(all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
-                              isoform_measured, jxns, project)
+            handler.read_data(geneName, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
+                              isoform_measured, jxns, sample_reads, project)
 
         # settify and sort
         all_jxns_starts = sorted(list(set(all_jxns_starts)))
@@ -345,7 +346,8 @@ class GeneInfo(Resource):
                        {"all_starts": all_jxns_starts,
                         "all_ends": all_jxns_ends,
                         "weights": jxns},
-                   "isoforms":isoform_measured
+                   "isoforms":isoform_measured,
+                   "reads": sample_reads
                    }
 
         return {'gene': theGene,
