@@ -103,9 +103,12 @@ class TCGAHandler:
                     allExons = json.load(exons_file)
 
                     for id, value in allExons.iteritems():
+                        start, end = id.split("_")[1:3]
                         sample_reads.append(
                             {
                                 "exon": id,
+                                "start": start,
+                                "end": end,
                                 "sample": sample,
                                 "weight": float(value)
                             })
