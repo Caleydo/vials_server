@@ -101,17 +101,18 @@ class TCGAHandler:
             if add_reads:
                 with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
                     allExons = json.load(exons_file)
-
+                    sample_exon_reads = {"sample": sample, "weights": []}
                     for id, value in allExons.iteritems():
                         start, end = id.split("_")[1:3]
-                        sample_reads.append(
-                            {
+                        sample_exon_reads["weights"].append({
                                 "exon": id,
                                 "start": start,
                                 "end": end,
                                 "sample": sample,
                                 "weight": float(value)
                             })
+                    sample_exon_reads["weights"] = sorted(sample_exon_reads["weights"], key=lambda x: x["start"])
+                    sample_reads.append(sample_exon_reads)
 
 
             # -- DATA ---

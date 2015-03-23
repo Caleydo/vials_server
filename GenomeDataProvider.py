@@ -275,7 +275,6 @@ parser.add_argument('noReads', type=bool, help='projectID')
 
 @api.route("/gene")
 class GeneInfo(Resource):
-
     def get(self):
         args = parser.parse_args()
 
