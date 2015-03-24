@@ -1,4 +1,5 @@
 import os
+from intervaltree import IntervalTree
 from flask import json
 from misopy.parse_gene import parseGene
 from bodymap import BodyMapHandler
@@ -102,15 +103,31 @@ class TCGAHandler:
                 with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
                     allExons = json.load(exons_file)
                     sample_exon_reads = {"sample": sample, "weights": []}
-                    for id, value in allExons.iteritems():
-                        start, end = id.split("_")[1:3]
+
+                    # tree to hold exon values
+                    exon_tree = IntervalTree()
+                    # tree to hold region values
+                    region_tree = IntervalTree()
+
+                    for exon_ID, weight in allExons.iteritems():
+                        exon_start, exon_end = exon_ID.split("_")[1:3]
+                        exon_tree[exon_start:exon_end] = float(weight)
+                        region_tree[exon_start:exon_end] = 0
+                    region_tree.split_overlaps()
+
+                    for region in region_tree:
+                        region_weight = 0
+                        for exon in exon_tree[region.begin:region.end]:
+                            region_weight += exon.data
+
                         sample_exon_reads["weights"].append({
-                                "exon": id,
-                                "start": start,
-                                "end": end,
+                                "exon": exon_ID,
+                                "start": region.begin,
+                                "end": region.end,
                                 "sample": sample,
-                                "weight": float(value)
+                                "weight": region_weight
                             })
+
                     sample_exon_reads["weights"] = sorted(sample_exon_reads["weights"], key=lambda x: x["start"])
                     sample_reads.append(sample_exon_reads)
 
