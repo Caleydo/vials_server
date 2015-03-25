@@ -19,6 +19,7 @@ class TCGAHandler:
         self.jxns_in_project_and_sample = lambda proj, sample: os.path.join(proj["dir"],sample,"jxns.json")
         self.exons_in_project_and_sample = lambda proj, sample: os.path.join(proj["dir"],sample,"exons.json")
         self.isoforms_in_project_and_sample = lambda proj, sample: os.path.join(proj["dir"],sample,"isoforms.json")
+        self.meta_in_project_and_sample = lambda proj, sample: os.path.join(proj["dir"],sample,"meta.json")
         self.isoforms_info_file_in_project = lambda proj: os.path.join(proj["dir"], "isoform_info.json")
 
     def load_genome_mapping(self, project):
@@ -70,17 +71,17 @@ class TCGAHandler:
 
 
 
-        isoforms = {}
+        self.isoforms = {}
         with open(self.isoforms_info_file_in_project(project)) as iso_info_file:
             for id, isoform in json.load(iso_info_file).iteritems():
                 if isoform['gene_id'] == geneName:
                     isoform["exons"] = map(self.unifyExonID, isoform["exons"])
-                    isoforms[id] = isoform
+                    self.isoforms[id] = isoform
 
-        return chromID, strand, tx_end, tx_start, exons, isoforms, merged_ranges
+        return chromID, strand, tx_end, tx_start, exons, self.isoforms, merged_ranges
 
     def read_data(self, geneName, add_reads,  all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
-                  isoform_measured, jxns, sample_reads, project):
+                  isoform_measured, jxns, sample_reads, project, tx_start, tx_end, chromID):
 
         for sample in datagroup['samples']:
 
@@ -88,16 +89,21 @@ class TCGAHandler:
                 allJunctions = json.load(jxns_file)
 
                 for position, value in allJunctions.iteritems():
-                    _, start, end, _ = position.split("_")
-                    weight = {
-                        "start": int(start),
-                        "end": int(end),
-                        "weight": float(value),
-                        "sample": sample
-                    }
-                    all_jxns_starts.append(weight["start"])
-                    all_jxns_ends.append(weight["end"])
-                    jxns.append(weight)
+                    cID, start, end, _ = position.split("_")
+                    start = int(start)
+                    end = int(end)
+                    cID = cID.replace("chr","")
+                    if cID == chromID:
+                        if tx_start<=start<=tx_end or tx_start<=end<=tx_end:
+                            weight = {
+                                "start": int(start),
+                                "end": int(end),
+                                "weight": float(value),
+                                "sample": sample
+                            }
+                            all_jxns_starts.append(weight["start"])
+                            all_jxns_ends.append(weight["end"])
+                            jxns.append(weight)
 
             if add_reads:
                 with open(self.exons_in_project_and_sample(project, sample)) as exons_file:
@@ -111,8 +117,11 @@ class TCGAHandler:
 
                     for exon_ID, weight in allExons.iteritems():
                         exon_start, exon_end = exon_ID.split("_")[1:3]
-                        exon_tree[exon_start:exon_end] = float(weight)
-                        region_tree[exon_start:exon_end] = 0
+                        exon_start = int(exon_start)
+                        exon_end = int(exon_end)
+                        if tx_start<=exon_start<=tx_end or tx_start<=exon_end<=tx_end:
+                            exon_tree[exon_start:exon_end] = float(weight)
+                            region_tree[exon_start:exon_end] = 0
                     region_tree.split_overlaps()
 
                     for region in region_tree:
@@ -142,14 +151,19 @@ class TCGAHandler:
                 all_iso = json.load(iso_file)
 
                 for id, infos in all_iso.iteritems():
-                    isoform_measured.append({
-                        "id": id,
-                        "weight": infos['scaled_estimate'],
-                        "sample":sample
-                    })
+                    if id in self.isoforms:
+                        isoform_measured.append({
+                            "id": id,
+                            "weight": infos['scaled_estimate'],
+                            "sample":sample
+                        })
+
+            with open(self.meta_in_project_and_sample(project, sample)) as meta_file:
+                meta = json.load(meta_file)
 
 
 
 
 
-            all_sapmple_infos[sample]= {"id": sample, "type": "TCGA", "origin": {}}
+
+            all_sapmple_infos[sample]= {"id": sample, "type": "TCGA", "meta": meta}

@@ -117,7 +117,9 @@ class BodyMapHandler:
 
         return chromID, strand, tx_end, tx_start, exonMap, isoforms, merged_ranges
 
-    def read_data(self, geneName, add_reads, all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup, isoform_measured, jxns, sample_reads, project):
+    def read_data(self, geneName, add_reads, all_jxns_ends, all_jxns_starts,
+                  all_sapmple_infos, datagroup, isoform_measured, jxns, sample_reads, project,
+                  tx_start, tx_end, chromID):
         # TODO: modularize -- now only BAM
         for sample, sample_info in datagroup['samples'].iteritems():
             all_sapmple_infos[sample] = {"id": sample, "type": self.data_type, "origin": sample_info}

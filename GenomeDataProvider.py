@@ -320,7 +320,7 @@ class GeneInfo(Resource):
             # project data
             # --------------------------
             handler.read_data(geneName, add_reads, all_jxns_ends, all_jxns_starts, all_sapmple_infos,  datagroup,
-                              isoform_measured, jxns, sample_reads, project)
+                              isoform_measured, jxns, sample_reads, project, tx_start, tx_end, chromID)
 
         # settify and sort
         all_jxns_starts = sorted(list(set(all_jxns_starts)))
