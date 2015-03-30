@@ -2,6 +2,7 @@ import os
 from flask import json
 from intervaltree import IntervalTree
 from misopy.parse_gene import parseGene
+from scipy.signal import resample
 
 __author__ = 'hen'
 class BodyMapHandler:
@@ -119,7 +120,7 @@ class BodyMapHandler:
 
     def read_data(self, geneName, add_reads, all_jxns_ends, all_jxns_starts,
                   all_sapmple_infos, datagroup, isoform_measured, jxns, sample_reads, project,
-                  tx_start, tx_end, chromID):
+                  tx_start, tx_end, chromID, resampled=2000):
         # TODO: modularize -- now only BAM
         for sample, sample_info in datagroup['samples'].iteritems():
             all_sapmple_infos[sample] = {"id": sample, "type": self.data_type, "origin": sample_info}
@@ -168,9 +169,11 @@ class BodyMapHandler:
 
             if add_reads:
                 sample_reads_file_name = os.path.join(project['dir'], sample, geneName,
-                                                     "wiggles_10k.json")  # TODO: create a head function for that
+                                                     "wiggles.json")  # TODO: create a head function for that
                 with open(sample_reads_file_name) as reads_file:
                     all_samples = json.load(reads_file)
+                    if resampled:
+                        all_samples = resample(all_samples, resampled).tolist()
                     sample_reads.append({"sample": sample,
                                          "min": min(all_samples),
                                          "max": max(all_samples),
