@@ -6,7 +6,7 @@ __author__ = 'Hendrik Strobelt'
 
 import pysam
 from flask.ext.restplus import Resource
-from caleydo.apiutil import createAPI
+from caleydo.apiutil import create_api
 
 import configparser
 from intervaltree import IntervalTree
@@ -22,7 +22,7 @@ from handlers.bodymap import BodyMapHandler
 from handlers.tcga import TCGAHandler
 
 # create the api application
-app, api = createAPI(__name__, version='1.0', title='Caleydo AltSplice API', description='splicing data handler')
+app, api = create_api(__name__, version='1.0', title='Caleydo AltSplice API', description='splicing data handler')
 
 
 class Helpers:
