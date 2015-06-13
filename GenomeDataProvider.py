@@ -406,6 +406,6 @@ if __name__ == '__main__':
     app.run()
 
 
-def create():
+def create(*args, **kwargs):
     return app
 
