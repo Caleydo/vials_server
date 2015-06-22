@@ -68,14 +68,10 @@ class Helpers:
 
 exec_root_dir = os.path.dirname(os.path.realpath(__file__))
 
-# load config file
-config = {}
-with open(exec_root_dir + '/config.json') as config_json:
-    config = json.load(config_json)
-    config_json.close()
 
 # define root directory for all AltSplice importations
-data_root = config['server']['data_root']
+import caleydo.config
+data_root = caleydo.config.view('genomebrowser-server').data_root
 if not os.path.exists(data_root):
     exit(1)
 
