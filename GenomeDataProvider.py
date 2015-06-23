@@ -355,7 +355,8 @@ class GeneInfo(Resource):
                         "weights": jxns},
                    "isoforms":isoform_measured,
                    "reads": sample_reads,
-                   "data_type": datagroup['data_type'] # TODO: allow projects with different data types
+                   "data_type": datagroup['data_type'],# TODO: allow projects with different data types
+                    "isoform_unit": datagroup['isoform_unit']
                    }
 
         return {'gene': theGene,

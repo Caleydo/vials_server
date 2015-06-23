@@ -78,6 +78,9 @@ class TCGAHandler:
                     isoform["exons"] = map(self.unifyExonID, isoform["exons"])
                     self.isoforms[id] = isoform
 
+        #todo: not nice but works :)
+        datagroup[ "isoform_unit"] = "scaled estimate (TPM)";
+
         return chromID, strand, tx_end, tx_start, exons, self.isoforms, merged_ranges
 
     def read_data(self, geneName, add_reads,  all_jxns_ends, all_jxns_starts, all_sapmple_infos, datagroup,
