@@ -1,11 +1,11 @@
-caleydo-vis-genome
+Server component for Vials
 ==================
 
-GenomeViewer (c.web plugin)
+The vials server is a plugin for Caleydo Web.
 
 ## Install
 
-You need to checkout caleydo-web (c.web)
+You need to checkout caleydo-web 
 
 -  `git checkout <url>` into c.web `static/scripts`
 -   add to `data/index.json`:
