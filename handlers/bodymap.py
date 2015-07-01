@@ -116,6 +116,9 @@ class BodyMapHandler:
         # self.exonExonMap = exonExonMap
         # self.exonMap = exonMap
 
+        #todo: not nice but works :)
+        datagroup["isoform_unit"]=  "estimated Psi (Percent Spliced In)";
+
         return chromID, strand, tx_end, tx_start, exonMap, isoforms, merged_ranges
 
     def read_data(self, geneName, add_reads, all_jxns_ends, all_jxns_starts,
