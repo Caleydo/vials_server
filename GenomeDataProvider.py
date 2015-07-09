@@ -6,7 +6,7 @@ __author__ = 'Hendrik Strobelt'
 
 import pysam
 from flask.ext.restplus import Resource
-from caleydo.apiutil import create_api
+from caleydo_server.apiutil import create_api
 
 import configparser
 from intervaltree import IntervalTree
@@ -70,8 +70,8 @@ exec_root_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 # define root directory for all AltSplice importations
-import caleydo.config
-data_root = caleydo.config.view('genomebrowser-server').data_root
+import caleydo_server.config
+data_root = caleydo_server.config.view('vials_server').data_root
 if not os.path.exists(data_root):
     exit(1)
 

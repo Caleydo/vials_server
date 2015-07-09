@@ -1,22 +1,28 @@
 {
-  "name" : "genomebrowser-server",
+  "name": "vials_server",
   "version": "0.0.1",
-  "caleydo" : {
-    "python-server-plugins": [
-      {
-        "type": "namespace",
-        "id": "genomebrowser-server",
-        "namespace": "/api/genomebrowser",
-        "folder" : "genomebrowser-server",
-        "module": "genomebrowser-server/GenomeDataProvider"
+  "peerDependencies": {
+    "caleydo_server": "*"
+  },
+  "caleydo": {
+    "plugins": {
+      "python": [
+        {
+          "type": "namespace",
+          "id": "vials_server",
+          "namespace": "/api/genomebrowser",
+          "file": "GenomeDataProvider"
+        }
+      ]
+    },
+    "dependencies": {
+      "python": {
+        "Flask-Cors": "==1.9.0",
+        "pysam": "==0.8.0",
+        "configparser": ">=3.3",
+        "misopy": "==0.5.2",
+        "intervaltree": ">=2.0.4"
       }
-    ],
-    "python-pip": {
-      "Flask-Cors" : "==1.9.0",
-      "pysam": "==0.8.0",
-      "configparser" : ">=3.3",
-      "misopy": "==0.5.2",
-      "intervaltree":">=2.0.4"
     }
   }
 }
