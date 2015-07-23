@@ -1,22 +1,10 @@
-from flask.ext.cors import CORS
-# from flask.ext.restful.utils.cors import crossdomain
-import pickle
-
 __author__ = 'Hendrik Strobelt'
 
-import pysam
 from flask.ext.restplus import Resource
 from caleydo_server.apiutil import create_api
 
-import configparser
-from intervaltree import IntervalTree
-# from misopy import index_gff, parse_gene
-from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
-from misopy.parse_gene import parseGene
 import os
-# import shelve
 import json
-import pprint
 
 from handlers.bodymap import BodyMapHandler
 from handlers.tcga import TCGAHandler
