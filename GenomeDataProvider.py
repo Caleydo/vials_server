@@ -1,5 +1,3 @@
-__author__ = 'Hendrik Strobelt'
-
 from flask.ext.restplus import Resource
 from caleydo_server.apiutil import create_api
 
@@ -8,6 +6,8 @@ import json
 
 from handlers.bodymap import BodyMapHandler
 from handlers.tcga import TCGAHandler
+
+__author__ = 'Hendrik Strobelt'
 
 # create the api application
 app, api = create_api(__name__, version='1.0', title='Caleydo AltSplice API', description='splicing data handler')

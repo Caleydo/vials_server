@@ -17,6 +17,12 @@
           "id": "vials_server",
           "namespace": "/api/genomebrowser",
           "file": "GenomeDataProvider"
+        },
+        {
+          "type": "namespace",
+          "id": "vials_server",
+          "namespace": "/api/vials",
+          "file": "vials_server"
         }
       ]
     },
