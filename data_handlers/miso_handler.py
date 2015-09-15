@@ -1,9 +1,12 @@
 import os
 from flask import json
 from intervaltree import IntervalTree
+import math
 from misopy.parse_gene import parseGene
 from misopy.sashimi_plot.plot_utils.plot_gene import readsToWiggle_pysam
+import numpy as np
 import pysam
+import scipy
 from scipy.signal import resample
 import sqlite3 as sqlite
 from vials_server.mapping_service import MappingService
@@ -111,20 +114,30 @@ class MisoHandler:
 
         return res
 
+    def downsample(self,x, size):
+        if x.size > size:
+            ds_factor = math.floor(float(x.size)/ size)
+            fill_size = ds_factor*size - x.size
+            if fill_size > 0:
+                x = np.append(x, np.zeros(fill_size)*np.NaN)
+            else:
+                x = np.resize(x, ds_factor*size)
+            return scipy.nanmean(x.reshape(-1, ds_factor), axis=1)
+        else:
+            return x
 
-    def get_wiggles_and_jxns(self):
+    def get_wiggles_and_jxns(self, bam_file, gene_meta, downsample_size):
+
+        print "BAM:", bam_file
         bamdata = pysam.Samfile(bam_file, 'rb')
-        sample_reads = bamdata.fetch(chromID,tx_start, tx_end)
-        wiggle, sample_jxns = readsToWiggle_pysam(sample_reads, tx_start, tx_end)
-        gene_dir = os.path.join(sample_dir, gene)
-        resample(wiggle, 10000).tolist()
+        sample_reads = bamdata.fetch('chr'+str(gene_meta['chromID']), gene_meta['start'], gene_meta['end'])
+        wiggle, sample_jxns = readsToWiggle_pysam(sample_reads, gene_meta['start'], gene_meta['end'])
+        return sample_jxns, self.downsample(wiggle, downsample_size).tolist()
 
-
-    def get_samples_and_measures(self, gene_id):
+    def get_samples_and_measures(self, gene_id, gene_meta):
         con = sqlite.connect(os.path.join(self.project_info['dir'], vials_db_name))
         con.row_factory = sqlite.Row
         cur = con.cursor()
-
 
         cur.execute("SELECT * FROM miso_summaries WHERE event_name = ?",(gene_id,))
         all_samples = cur.fetchall()
@@ -135,7 +148,17 @@ class MisoHandler:
         samples_info = {}
         iso_measures = []
 
+        # create a mapping to use short names and reduce bandwidth requirements
+        isoform_long_to_short_names = {}
+        if 'isoforms' in gene_meta:
+            for short_name, info in gene_meta['isoforms'].iteritems():
+                isoform_long_to_short_names[info['exonNames']] = short_name
 
+        with open(os.path.join(self.project_info['dir'], miso_sample_info_file)) as samples_file:
+            sample_meta = json.load(samples_file)
+
+        jxns = []
+        wiggle_list =[]
         for sample in all_samples:
 
             sample_id = sample['sample']
@@ -146,6 +169,9 @@ class MisoHandler:
             }
 
             isoforms = sample['isoforms'].split(',')
+            isoforms = map(lambda iso: iso.strip("'"), isoforms)
+            isoforms = map(lambda iso: isoform_long_to_short_names[iso] if (iso in isoform_long_to_short_names) else iso, isoforms)
+
             measures = sample['miso_posterior_mean'].split(',')
 
             if len(isoforms)==len(measures):
@@ -156,4 +182,43 @@ class MisoHandler:
                         'weight': measures[index]
                     })
 
-        return samples_info, iso_measures
+            # cache the complictaed results
+            cache_jw_db_path = os.path.join(self.project_info['dir'], '_cache')
+            if not os.path.isdir(cache_jw_db_path):
+                os.makedirs(cache_jw_db_path)
+            con = sqlite.connect(os.path.join(cache_jw_db_path, 'jxn_wiggle.sqlite'))
+            con.row_factory = sqlite.Row
+            cur = con.cursor()
+            cur.execute('CREATE TABLE IF NOT EXISTS jxn_wiggle(id TEXT, jxn TEXT, wiggles BLOB)')
+
+
+
+            # try to find the bam file
+            if sample_id in sample_meta:
+                bam_file = sample_meta[sample_id]['bam_file']
+                if bam_file and not bam_file == '':
+                    print gene_id+'__'+sample_id
+
+                    cur.execute('SELECT * FROM jxn_wiggle WHERE id=?',(gene_id+'__'+sample_id,))
+                    cache_hit = cur.fetchone()
+
+                    if cache_hit:
+                        jxn = json.loads(cache_hit[1])
+                        wiggles = map(float, cache_hit[2].split(','))
+
+                    else:
+                        jxn, wiggles = self.get_wiggles_and_jxns(
+                            os.path.join(self.project_info['info']['bam_root_dir'], bam_file),
+                            gene_meta,
+                            2000)
+                        cur.execute('INSERT INTO jxn_wiggle VALUES (?,?,?)',
+                                    (gene_id+'__'+sample_id, json.dumps(jxn), ','.join(map(str, wiggles)),))
+                        con.commit()
+                    wiggle_list.append(wiggles)
+                    jxns.append(jxn)
+
+            con.close()
+
+
+
+        return samples_info, iso_measures, jxns, wiggle_list

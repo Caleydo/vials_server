@@ -152,16 +152,18 @@ class GeneInfo(Resource):
             gene_id = args.geneID
             gene_meta = ref_genome_handler.get_gene_info(gene_id)
 
-            samples,iso_measures = data_handler.get_samples_and_measures(gene_id)
+            samples, iso_measures, jxns_measures, wiggles = data_handler.get_samples_and_measures(gene_id, gene_meta)
 
             return {
-                '_rg': gene_meta,
+                'gene': gene_meta,
                 'samples': samples,
                 'measures': {
                     'data_type': 'miso',
                     'isoform_unit': 'scaled estimate (TPM)',
 
-                    'isoforms': iso_measures
+                    'isoforms': iso_measures,
+                    'jxns': jxns_measures,
+                    'wiggles':wiggles
                 }
             }
 
