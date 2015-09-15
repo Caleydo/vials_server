@@ -1,11 +1,10 @@
 import os
 import json
-
 from flask.ext.restplus import Resource
-
 from caleydo_server.apiutil import create_api
 import caleydo_server.config
-from handlers.miso_handler import MisoHandler
+from data_handlers.miso_handler import MisoHandler
+from ref_genome_handler.gff3_handler import GFFHandler
 
 __author__ = 'Hendrik Strobelt'
 
@@ -27,16 +26,51 @@ projects_dir = caleydo_server.config.view('vials_server').projects_dir
 if not os.path.exists(projects_dir):
     exit(1)
 
-# global variable for simple caching
+# global variables for simple caching
 project_info = {}
+ref_genome_info = {}
+
+data_handler_mapping = {
+    'miso': MisoHandler
+}
+
+ref_genome_handler_mapping = {
+    'gff3': GFFHandler
+}
 
 
 class Helpers:
     @staticmethod
     def get_data_handler(project):
-        if project['info']['project_type']== "miso":
-            return MisoHandler(project)
+        p_type = project['info']['project_type']
+        if p_type in data_handler_mapping:
+            return data_handler_mapping[p_type](project)
         return None
+
+    @staticmethod
+    def get_ref_genome_handler(project):
+        if ref_genome_info == {}:
+            # collect all reference genomes
+            ref_genome_dir = caleydo_server.config.view('vials_server').ref_genomes_dir
+            for root,dirs, files in os.walk(ref_genome_dir):
+                if 'meta.json' in files:
+                    with open(os.path.join(root, 'meta.json')) as meta_file:
+                        m_info = json.load(meta_file)
+                        ref_genome_info[m_info['name']] = {
+                            'info': m_info,
+                            'db_file': os.path.join(root,m_info['sqlite_file']),
+                            'origin': m_info['origin_type']
+                        }
+
+        if project['info']['ref_genome'] in ref_genome_info:
+            rg = ref_genome_info[project['info']['ref_genome']]
+            if rg['origin'] in ref_genome_handler_mapping:
+                return ref_genome_handler_mapping[rg['origin']](rg)
+
+            # return ref_genome_info[project['info']['ref_genome']]
+
+        return None
+
 
     @staticmethod
     def get_all_projects(refresh=False):
@@ -98,6 +132,38 @@ class GeneSelectView(Resource):
             project = all_projects[project_id]
             handler = Helpers.get_data_handler(project)
             return handler.get_genes_in_project_filtered(args.selectFilter)
+
+        return None
+
+
+@api.route("/geneinfo")
+class GeneInfo(Resource):
+    def get(self):
+        args = parser.parse_args()
+        project_id = args.projectID
+        all_projects = Helpers.get_all_projects()
+
+        if project_id and project_id in all_projects:
+            project = all_projects[project_id]
+            data_handler = Helpers.get_data_handler(project)
+
+            ref_genome_handler = Helpers.get_ref_genome_handler(project)
+
+            gene_id = args.geneID
+            gene_meta = ref_genome_handler.get_gene_info(gene_id)
+
+            samples,iso_measures = data_handler.get_samples_and_measures(gene_id)
+
+            return {
+                '_rg': gene_meta,
+                'samples': samples,
+                'measures': {
+                    'data_type': 'miso',
+                    'isoform_unit': 'scaled estimate (TPM)',
+
+                    'isoforms': iso_measures
+                }
+            }
 
         return None
 
