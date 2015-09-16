@@ -18,9 +18,10 @@ vials_project_dir_ending = ".vials_project"
 app, api = create_api(__name__, version='1.5', title='Caleydo Vials API', description='splicing data handler')
 parser = api.parser()
 parser.add_argument('geneID', type=str, help='gene ID')
-parser.add_argument('noReads', type=bool, help='do not show reads')
 parser.add_argument('projectID', type=str, help='projectID')
+parser.add_argument('noReads', type=bool, help='do not show reads')
 parser.add_argument('selectFilter', type=str, help='selectFilter')
+parser.add_argument('exactMatch', type=bool, help='does match exactly')
 
 projects_dir = caleydo_server.config.view('vials_server').projects_dir
 if not os.path.exists(projects_dir):
@@ -127,11 +128,14 @@ class GeneSelectView(Resource):
         args = parser.parse_args()
         project_id = args.projectID
         all_projects = Helpers.get_all_projects()
+        exact_match = False
+        if args.exactMatch:
+            exact_match = True
 
         if project_id and project_id in all_projects:
             project = all_projects[project_id]
             handler = Helpers.get_data_handler(project)
-            return handler.get_genes_in_project_filtered(args.selectFilter)
+            return handler.get_genes_in_project_filtered(args.selectFilter, exact_match)
 
         return None
 

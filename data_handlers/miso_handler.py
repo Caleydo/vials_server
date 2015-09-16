@@ -82,7 +82,12 @@ class MisoHandler:
 
         return res
 
-    def get_genes_in_project_filtered(self, name_filter):
+    def setify(self, seq):
+        seen = set()
+        seen_add = seen.add
+        return [x for x in seq if not (x['id'] in seen or seen_add(x['id']))]
+
+    def get_genes_in_project_filtered(self, name_filter, exact_match):
         if 'gene_name_mapped' not in self.project_info['info']:
             self.enrich_gene_names(self.project_info['info'])
             v_helper.update_project_file(self.project_info)
@@ -90,25 +95,33 @@ class MisoHandler:
         con = sqlite.connect(os.path.join(self.project_info['dir'], vials_db_name))
         cur = con.cursor()
 
+        like_string_a = name_filter+'%'
+        like_string_b = '%' + name_filter + '%'
+
+        if exact_match:
+            like_string_a = name_filter
+            like_string_b = name_filter
+
         if self.project_info['info']['gene_name_mapped'] == 'event_names':
             cur.execute("SELECT name FROM event_names WHERE alt_name LIKE ? ORDER BY name LIMIT 0,100",
-                        (name_filter+'%',))
+                        (like_string_a,))
             fetched = map(lambda x: [x[0], None, None], cur.fetchall())
         else:
             cur.execute("SELECT name, alt_name, description FROM event_names_enriched WHERE alt_name LIKE ? ORDER BY alt_name LIMIT 0,100",
-                        (name_filter+'%',))
+                        (like_string_a,))
 
             fetched = cur.fetchall()
 
             if len(fetched) < 100:
                 cur.execute("SELECT name, alt_name, description FROM event_names_enriched WHERE name LIKE ? ORDER BY name LIMIT 0,?",
-                            ('%'+name_filter+'%', 100-len(fetched),))
+                            (like_string_b, 100-len(fetched),))
                 fetched = fetched + cur.fetchall()
-
-
 
         # res = [item for sublist in cur.fetchall() for item in sublist]  # flatten result, faster than map(lambda x: x[0],l)
         res = map(lambda x: {'id': x[0], 'name': x[1], 'desc': x[2]}, fetched)
+
+        # remove all duplicates from the results (e.g. if name == id)
+        res = self.setify(res)
 
         con.close()
 
@@ -214,10 +227,13 @@ class MisoHandler:
                         cur.execute('INSERT INTO jxn_wiggle VALUES (?,?,?)',
                                     (gene_id+'__'+sample_id, json.dumps(jxn), ','.join(map(str, wiggles)),))
                         con.commit()
-                    wiggle_list.append(wiggles)
-                    jxns.append(jxn)
+                    wiggle_list.append({'sample':sample_id, 'data': wiggles})
+                    jxns.append({'sample': sample_id, 'data': jxn})
 
             con.close()
+
+
+
 
 
 
