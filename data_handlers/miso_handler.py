@@ -178,6 +178,21 @@ class MisoHandler:
 
         jxns = []
         wiggle_list = []
+
+         # cache the complictaed results
+        cache_jw_db_path = os.path.join(self.project_info['dir'], '_cache')
+        if not os.path.isdir(cache_jw_db_path):
+            os.makedirs(cache_jw_db_path)
+        con = sqlite.connect(os.path.join(cache_jw_db_path, 'jxn_wiggle.sqlite'))
+        con.row_factory = sqlite.Row
+        cur = con.cursor()
+        cur.execute('CREATE TABLE IF NOT EXISTS jxn_wiggle(sample_id TEXT, geneID TEXT, jxn TEXT, wiggles BLOB)')
+        cur.execute('CREATE INDEX IF NOT EXISTS gID ON jxn_wiggle(geneID)')
+        cache_results = {}
+        for res in cur.execute('SELECT * FROM jxn_wiggle WHERE geneID=?', (gene_id ,)):
+            cache_results[res[0]] = res
+        cache_needs_indexing = False
+
         for sample in all_samples:
 
             sample_id = sample['sample']
@@ -205,41 +220,36 @@ class MisoHandler:
                         'weight': measures[index]
                     })
 
-            # cache the complictaed results
-            cache_jw_db_path = os.path.join(self.project_info['dir'], '_cache')
-            if not os.path.isdir(cache_jw_db_path):
-                os.makedirs(cache_jw_db_path)
-            con = sqlite.connect(os.path.join(cache_jw_db_path, 'jxn_wiggle.sqlite'))
-            con.row_factory = sqlite.Row
-            cur = con.cursor()
-            cur.execute('CREATE TABLE IF NOT EXISTS jxn_wiggle(id TEXT, jxn TEXT, wiggles BLOB)')
-
-
 
             # try to find the bam file
             if sample_id in sample_meta:
                 bam_file = sample_meta[sample_id]['bam_file']
                 if bam_file and not bam_file == '':
-                    print gene_id + '__' + sample_id
+                    cache_id = gene_id + '__' + sample_id
 
-                    cur.execute('SELECT * FROM jxn_wiggle WHERE id=?', (gene_id + '__' + sample_id,))
-                    cache_hit = cur.fetchone()
+                    cache_hit = None
+                    if cache_id in cache_results:
+                        cache_hit = cache_results[cache_id]
 
                     if cache_hit:
-                        jxn = json.loads(cache_hit[1])
-                        wiggles = map(float, cache_hit[2].split(','))
+                        jxn = json.loads(cache_hit[2]) # load jxn
+                        wiggles = map(float, cache_hit[3].split('_'))
 
                     else:
                         jxn, wiggles = self.get_wiggles_and_jxns(
                             os.path.join(self.project_info['info']['bam_root_dir'], bam_file),
                             gene_meta,
                             2000)
-                        cur.execute('INSERT INTO jxn_wiggle VALUES (?,?,?)',
-                                    (gene_id + '__' + sample_id, json.dumps(jxn), ','.join(map(str, wiggles)),))
+                        cur.execute('INSERT INTO jxn_wiggle VALUES (?,?,?,?)',
+                                    (gene_id + '__' + sample_id, gene_id, json.dumps(jxn), '_'.join(map(str, wiggles)),))
                         con.commit()
+                        cache_needs_indexing = True
                     wiggle_list.append({'sample': sample_id, 'data': wiggles})
                     jxns.append({'sample': sample_id, 'data': jxn})
 
-            con.close()
+        # TODO: re-indexing takes too long..
+        # if cache_needs_indexing:
+        #     cur.execute("REINDEX gID")
+        con.close()
 
         return samples_info, iso_measures, jxns, wiggle_list, 2000
