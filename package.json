@@ -26,6 +26,15 @@
         }
       ]
     },
+    "products": [
+      {
+        "id": "vials",
+        "name": "Vials",
+        "type": "python",
+        "app": "vials",
+        "bundle": true
+      }
+    ],
     "dependencies": {
       "python": {
         "Flask-Cors": "==1.9.0",
