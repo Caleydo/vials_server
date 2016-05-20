@@ -1,8 +1,10 @@
 {
   "name": "vials_server",
+  "description": "Reading Genomic Files and provide data as API",
   "version": "0.0.1",
   "license" : "SEE LICENSE IN LICENSE",
   "repository": "Caleydo/vials_server",
+  "homepage": "http://vials.io",
   "dependencies": {
   },
   "peerDependencies": {
@@ -10,6 +12,7 @@
     "vials": "*"
   },
   "caleydo": {
+    "type": "app",
     "plugins": {
       "python": [
         {
