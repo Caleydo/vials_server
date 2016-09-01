@@ -1,62 +1,43 @@
-Server component for Vials
-==================
+Caleydo Vials Server ![Caleydo Web Server Plugin](https://img.shields.io/badge/Caleydo%20Web-Server-10ACDF.svg)
+=====================
 
-The vials server is a plugin for Caleydo Web.
+The vials server reads genomic files and provide data as API. It is recommended to use it in conjunction with [vials](https://github.com/Caleydo/vials).
 
-## Install
+Installation
+------------
 
-You need to checkout caleydo-web 
+[Set up a virtual machine using Vagrant](http://www.caleydo.org/documentation/vagrant/) and run these commands inside the virtual machine:
 
--  `git checkout <url>` into c.web `static/scripts`
--   add to `data/index.json`:
-
-```
-    {
-        "name": "GenomeBrowser",
-        "path": "genomelink.csv",
-        "type": "genomeDataLink",
-        "idtype":"gdLink"
-    },
-
+```bash
+./manage.sh clone Caleydo/vials_server
+./manage.sh resolve
 ```
 
--   add to `data/idtypes.json`:
+If you want this plugin to be dynamically resolved as part of another application of plugin, you need to add it as a peer dependency to the _package.json_ of the application or plugin it should belong to:
 
+```json
+{
+  "peerDependencies": {
+    "vials_server": "*"
+  }
+}
 ```
-    {
-        "id": "gdLink",
-        "internal": true,
-        "name": "gdlink Columns"
-    }
-```
-
-- add a file `data/genomelink.csv` with content (2 lines):
-
-```
-x,serveradress
-0,http://localhost:5000/bam
-
-```
-
-- run `node configgenerator.js` in root of c.web. This will integrate the plugin into
-the build file for grunt
-
-- run `grunt build`
-
-- (run the data service provider on port 5000)
-
-- run `grunt serverd` and keep fingers crossed :)
 
 GenomeDataProvider
-==================
+--------------
 
 Reading Genomic Files and provide data as API
 
-run:
-python GenomeDataProvider.py
+Run: `python GenomeDataProvider.py`
 
 
-requirements
---------------
-manually install matplotlib:
-sudo apt-get install python-matplotlib
+### Requirements
+
+Manually install matplotlib: `sudo apt-get install python-matplotlib`
+
+
+***
+
+<a href="https://caleydo.org"><img src="http://caleydo.org/assets/images/logos/caleydo.svg" align="left" width="200px" hspace="10" vspace="6"></a>
+This repository is part of **[Caleydo Web](http://caleydo.org/)**, a platform for developing web-based visualization applications. For tutorials, API docs, and more information about the build and deployment process, see the [documentation page](http://caleydo.org/documentation/).
+
