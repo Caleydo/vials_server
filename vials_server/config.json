@@ -1,7 +1,7 @@
 {
-  "data_root":  "${caleydo_server.dataDir}/vials",
+  "data_root": "${caleydo_server.dataDir}/vials",
   "projects_dir": "${caleydo_server.dataDir}/vials_projects",
   "ref_genomes_dir": "${caleydo_server.dataDir}/reference_genomes",
   "mapping_dir": "${caleydo_server.dataDir}/mapping_tables",
-  "bam_dir_prefix":""
+  "bam_dir_prefix": ""
 }

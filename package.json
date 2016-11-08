@@ -1,53 +1,36 @@
 {
+  "files": [
+    "vials_server",
+    "__init__.py",
+    "__main__.py",
+    "build",
+    "requirements.txt",
+    "requirements_dev.txt",
+    "debian_packages.txt",
+    "redhat_packages.txt"
+  ],
+  "scripts": {
+    "check": "flake8",
+    "pretest": "npm run check",
+    "test": "python setup.py test",
+    "predist": "npm run test",
+    "dist": "python setup.py bdist_egg"
+  },
   "name": "vials_server",
   "description": "Reading Genomic Files and provide data as API",
-  "version": "0.0.1",
-  "license" : "SEE LICENSE IN LICENSE",
-  "repository": "Caleydo/vials_server",
   "homepage": "http://vials.io",
-  "dependencies": {
+  "version": "0.0.1",
+  "author": {
+    "name": "The Caleydo Team",
+    "email": "contact@caleydo.org",
+    "url": "https://caleydo.org"
   },
-  "peerDependencies": {
-    "caleydo_server": "*",
-    "vials": "*"
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/phovea/vials_server/issues"
   },
-  "caleydo": {
-    "type": "app",
-    "plugins": {
-      "python": [
-        {
-          "type": "namespace",
-          "id": "vials_server",
-          "namespace": "/api/genomebrowser",
-          "file": "GenomeDataProvider"
-        },
-        {
-          "type": "namespace",
-          "id": "vials_server",
-          "namespace": "/api/vials",
-          "file": "vials_server"
-        }
-      ]
-    },
-    "products": [
-      {
-        "id": "vials",
-        "name": "Vials",
-        "type": "python",
-        "app": "vials",
-        "bundle": true
-      }
-    ],
-    "dependencies": {
-      "python": {
-        "Flask-Cors": "==1.9.0",
-        "pysam": "==0.8.0",
-        "misopy": "==0.5.2",
-        "intervaltree": ">=2.0.4"
-      }
-    }
-  },
-  "publishConfig": {
-    "registry": "http://registry.caleydo.org/"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/phovea/vials_server.git"
   }
 }
