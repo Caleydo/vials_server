@@ -4,8 +4,8 @@ from phovea_server.apiutil import create_api
 import os
 import json
 
-from data_handlers.bodymap import BodyMapHandler
-from data_handlers.tcga import TCGAHandler
+from .data_handlers.bodymap import BodyMapHandler
+from .data_handlers.tcga import TCGAHandler
 
 __author__ = 'Hendrik Strobelt'
 

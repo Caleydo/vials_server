@@ -3,8 +3,8 @@ import json
 from ns.ext.restplus import Resource
 from phovea_server.apiutil import create_api
 import phovea_server.config
-from data_handlers.miso_handler import MisoHandler
-from ref_genome_handler.gff3_handler import GFFHandler
+from .data_handlers.miso_handler import MisoHandler
+from .ref_genome_handler.gff3_handler import GFFHandler
 
 __author__ = 'Hendrik Strobelt'
 
