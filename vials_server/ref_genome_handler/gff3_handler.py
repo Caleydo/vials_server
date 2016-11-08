@@ -46,6 +46,7 @@ class GFFHandler:
         return merged_ranges
 
     def get_gene_info(self, gene_id):
+        print self.rg_info['db_file']
         con = sqlite.connect(self.rg_info['db_file'])
         con.row_factory = sqlite.Row
 

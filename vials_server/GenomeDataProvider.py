@@ -1,5 +1,4 @@
-from ns.ext.restplus import Resource
-from phovea_server.apiutil import create_api
+from phovea_server.apiutil import create_api, Resource
 
 import os
 import json
