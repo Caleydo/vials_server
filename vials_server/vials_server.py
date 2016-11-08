@@ -1,8 +1,8 @@
 import os
 import json
-from flask.ext.restplus import Resource
-from caleydo_server.apiutil import create_api
-import caleydo_server.config
+from ns.ext.restplus import Resource
+from phovea_server.apiutil import create_api
+import phovea_server.config
 from data_handlers.miso_handler import MisoHandler
 from ref_genome_handler.gff3_handler import GFFHandler
 
@@ -23,7 +23,7 @@ parser.add_argument('noReads', type=bool, help='do not show reads')
 parser.add_argument('selectFilter', type=str, help='selectFilter')
 parser.add_argument('exactMatch', type=bool, help='does match exactly')
 
-projects_dir = caleydo_server.config.view('vials_server').projects_dir
+projects_dir = phovea_server.config.view('vials_server').projects_dir
 if not os.path.exists(projects_dir):
     exit(1)
 
@@ -52,7 +52,7 @@ class Helpers:
     def get_ref_genome_handler(project):
         if ref_genome_info == {}:
             # collect all reference genomes
-            ref_genome_dir = caleydo_server.config.view('vials_server').ref_genomes_dir
+            ref_genome_dir = phovea_server.config.view('vials_server').ref_genomes_dir
             for root,dirs, files in os.walk(ref_genome_dir):
                 if 'meta.json' in files:
                     with open(os.path.join(root, 'meta.json')) as meta_file:

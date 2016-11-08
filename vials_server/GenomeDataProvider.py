@@ -1,5 +1,5 @@
-from flask.ext.restplus import Resource
-from caleydo_server.apiutil import create_api
+from ns.ext.restplus import Resource
+from phovea_server.apiutil import create_api
 
 import os
 import json
@@ -58,8 +58,8 @@ exec_root_dir = os.path.dirname(os.path.realpath(__file__))
 
 
 # define root directory for all AltSplice importations
-import caleydo_server.config
-data_root = caleydo_server.config.view('vials_server').data_root
+import phovea_server.config
+data_root = phovea_server.config.view('vials_server').data_root
 if not os.path.exists(data_root):
     exit(1)
 

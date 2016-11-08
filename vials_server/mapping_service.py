@@ -1,10 +1,10 @@
 import os
-import caleydo_server
+import phovea_server
 
 __author__ = 'Hendrik Strobelt'
 
 
-config = caleydo_server.config.view('vials_server')
+config = phovea_server.config.view('vials_server')
 
 
 class EnsemblGeneNameMapping():
