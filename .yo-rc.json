@@ -1,9 +1,9 @@
 {
   "generator-phovea": {
-    "type": "server",
+    "type": "slib",
     "name": "vials_server",
     "author": "The Caleydo Team",
-    "githubAccount": "phovea",
+    "githubAccount": "caleydo",
     "modules": [
       "phovea_server"
     ],

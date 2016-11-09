@@ -27,10 +27,10 @@
   },
   "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://github.com/phovea/vials_server/issues"
+    "url": "https://github.com/caleydo/vials_server/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/phovea/vials_server.git"
+    "url": "https://github.com/caleydo/vials_server.git"
   }
 }
