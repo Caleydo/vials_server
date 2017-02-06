@@ -11,15 +11,8 @@ def phovea(registry):
   :param registry:
   """
   # generator-phovea:begin
-  registry.append('namespace', 'vials_server', 'vials_server.GenomeDataProvider',
-                  {
-                      'namespace': '/api/genomebrowser'
-                  })
-
-  registry.append('namespace', 'vials_server', 'vials_server.vials_server',
-                  {
-                     'namespace': '/api/vials'
-                  })
+  registry.append('namespace', 'vials_server', 'vials_server.GenomeDataProvider', dict(namespace='/api/genomebrowser'))
+  registry.append('namespace', 'vials_server', 'vials_server.vials_server', dict(namespace='/api/vials'))
   # generator-phovea:end
   pass
 
