@@ -1,0 +1,7 @@
+{
+  "data_root": "${phovea_server.dataDir}/vials",
+  "projects_dir": "${phovea_server.dataDir}/vials_projects",
+  "ref_genomes_dir": "${phovea_server.dataDir}/reference_genomes",
+  "mapping_dir": "${phovea_server.dataDir}/mapping_tables",
+  "bam_dir_prefix": ""
+}

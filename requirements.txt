@@ -1,15 +1,5 @@
-Cython==0.21
-Flask==0.10.1
+-e git+https://github.com/phovea/phovea_server.git@v0.0.5#egg=phovea_server
 Flask-Cors==1.9.0
-Flask-RESTful==0.2.12
-Jinja2==2.7.3
-MarkupSafe==0.23
-Werkzeug==0.9.6
-aniso8601==0.83
-configparser==3.3.0r2
-flask-restplus==0.2.4
-itsdangerous==0.24
 pysam==0.8.0
-pytz==2014.7
-six==1.8.0
-wsgiref==0.1.2
+misopy==0.5.2
+intervaltree>=2.0.4

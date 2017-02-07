@@ -1,0 +1,42 @@
+{
+  "generator-phovea": {
+    "type": "slib",
+    "name": "vials_server",
+    "author": "The Caleydo Team",
+    "githubAccount": "caleydo",
+    "modules": [
+      "phovea_server"
+    ],
+    "extensions": [],
+    "sextensions": [
+      {
+        "type": "namespace",
+        "id": "vials_server",
+        "module": "GenomeDataProvider",
+        "extras": {
+          "namespace": "/api/genomebrowser"
+        }
+      },
+      {
+        "type": "namespace",
+        "id": "vials_server",
+        "module": "vials_server",
+        "extras": {
+          "namespace": "/api/vials"
+        }
+      }
+    ],
+    "libraries": [],
+    "unknown": {
+      "requirements": [
+        "Flask-Cors==1.9.0",
+        "pysam==0.8.0",
+        "misopy==0.5.2",
+        "intervaltree>=2.0.4"
+      ],
+      "debianPackages": [],
+      "redhatPackages": []
+    },
+    "today": "Tue, 08 Nov 2016 12:25:58 GMT"
+  }
+}

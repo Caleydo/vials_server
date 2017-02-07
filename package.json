@@ -1,22 +1,39 @@
 {
-  "name" : "genomebrowser-server",
-  "version": "0.0.1",
-  "caleydo" : {
-    "python-server-plugins": [
-      {
-        "type": "namespace",
-        "id": "genomebrowser-server",
-        "namespace": "/api/genomebrowser",
-        "folder" : "genomebrowser-server",
-        "module": "genomebrowser-server/GenomeDataProvider"
-      }
-    ],
-    "python-pip": {
-      "Flask-Cors" : "==1.9.0",
-      "pysam": "==0.8.0",
-      "configparser" : ">=3.3",
-      "misopy": "==0.5.2",
-      "intervaltree":">=2.0.4"
-    }
+  "name": "vials_server",
+  "description": "Reading Genomic Files and provide data as API",
+  "homepage": "http://vials.io",
+  "version": "1.5.1",
+  "author": {
+    "name": "The Caleydo Team",
+    "email": "contact@caleydo.org",
+    "url": "https://caleydo.org"
+  },
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/caleydo/vials_server/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caleydo/vials_server.git"
+  },
+  "files": [
+    "vials_server",
+    "__init__.py",
+    "__main__.py",
+    "build",
+    "requirements.txt",
+    "requirements_dev.txt",
+    "docker_packages.txt",
+    "redhat_packages.txt"
+  ],
+  "scripts": {
+    "check": "flake8",
+    "pretest": "npm run check",
+    "test": "test ! -d tests || python setup.py test",
+    "predist": "npm run build && npm run docs",
+    "dist": "python setup.py bdist_egg",
+    "docs": "echo todo creating docs...",
+    "prebuild": "node -e \"process.exit(process.env.PHOVEA_SKIP_TESTS === undefined?1:0)\" || npm run test",
+    "build": "python -c \"from distutils.dir_util import mkpath ; mkpath('./build/source')\" && (tar -c ./vials_server --exclude '*.pyc' | tar -xC build/source)"
   }
 }
